@@ -1,0 +1,2 @@
+echo '[phases.setup]' > nixpacks.toml
+echo 'nixPkgs = ["ffmpeg"]' >> nixpacks.toml
