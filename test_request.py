@@ -197,6 +197,30 @@ class RequestFlowTests(unittest.TestCase):
             require_active_user(build_request("/search", cookies={ACCESS_SESSION_COOKIE: cookie_value}))
         self.assertEqual(signed_out_search.exception.status_code, 401)
 
+    def test_admin_can_generate_test_access_link_for_active_user(self):
+        asyncio.run(main.admin_add_user({"email": "tester@example.com", "status": "active"}))
+
+        access_link = asyncio.run(main.admin_create_access_link({"email": "tester@example.com"}))
+        self.assertEqual(access_link["status"], "created")
+        self.assertIn("/register/verify?token=", access_link["access_url"])
+
+        token = access_link["access_url"].split("token=", 1)[1]
+        verify_response = Response()
+        verification = asyncio.run(
+            main.verify_access_request(
+                token,
+                verify_response,
+                build_request("/register/verify"),
+            )
+        )
+        self.assertEqual(verification["status"], "active")
+        cookie_value = response_cookie_value(verify_response, ACCESS_SESSION_COOKIE)
+        self.assertTrue(cookie_value)
+        current_user = require_active_user(
+            build_request("/search", cookies={ACCESS_SESSION_COOKIE: cookie_value})
+        )
+        self.assertEqual(current_user["email"], "tester@example.com")
+
     def test_secure_mode_hides_demo_verification_token(self):
         os.environ["PODIFY_EXPOSE_DEMO_VERIFICATION"] = "0"
 

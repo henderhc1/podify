@@ -10,13 +10,13 @@
   <style>
     :root{--bg:#f6efdf;--card:#fffaf1cc;--ink:#1f2b28;--muted:#5e6966;--line:#1f2b2822;--green:#1f6f5f;--green2:#174f44;--orange:#c95c34;--shadow:0 18px 46px #1f2b281c}
     *{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:"Space Grotesk",sans-serif;color:var(--ink);background:radial-gradient(circle at top left,#c95c3420,transparent 28%),radial-gradient(circle at top right,#1f6f5f24,transparent 28%),linear-gradient(180deg,#f7f0e5,#efe2ca);min-height:100vh}
+    body{font-family:"Space Grotesk",sans-serif;color:var(--ink);background:radial-gradient(circle at top left,#c95c3420,transparent 28%),radial-gradient(circle at top right,#1f6f5f24,transparent 28%),linear-gradient(180deg,#f7f0e5,#efe2ca);min-height:100vh;overflow-x:hidden}
     a{text-decoration:none;color:inherit}
     button,input,textarea,select{font:inherit}
     .wrap{width:min(1180px,calc(100% - 2rem));margin:0 auto}
     .top{position:sticky;top:0;z-index:20;background:#f6efdfcc;backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
     .top .wrap{display:flex;justify-content:space-between;align-items:center;gap:1rem;padding:1rem 0}
-    .brand{display:flex;align-items:center;gap:1rem}
+    .brand{display:flex;align-items:center;gap:1rem;flex-wrap:wrap;min-width:0}
     .mark{width:50px;height:50px;border-radius:16px;display:grid;place-items:center;background:linear-gradient(135deg,var(--green),var(--orange));color:#fff;font-weight:700;box-shadow:var(--shadow)}
     h1{font-family:"Fraunces",serif;font-size:1.9rem;line-height:1}
     .sub{color:var(--muted);font-size:.95rem;margin-top:.2rem}
@@ -33,13 +33,14 @@
     .stat strong{display:block;font-size:1.2rem}
     .stack{display:grid;gap:1rem}
     .tabs{display:flex;flex-wrap:wrap;gap:.65rem;margin:1.4rem 0 1rem}
-    .tab{padding:.8rem 1.1rem;border-radius:999px;border:1px solid var(--line);background:#fffaf1e6;color:var(--muted);cursor:pointer;font-weight:700}
+    .tab{padding:.8rem 1.1rem;border-radius:999px;border:1px solid var(--line);background:#fffaf1e6;color:var(--muted);cursor:pointer;font-weight:700;white-space:nowrap}
     .tab.active,.tab:hover{background:var(--green);color:#fff}
     .view{display:none}
     .view.active{display:block}
     .grid{display:grid;grid-template-columns:1.35fr 1fr;gap:1rem}
     .panel{padding:1.3rem}
     .head{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;margin-bottom:1rem}
+    .head > *{min-width:0}
     .head h3{font-size:1.15rem}
     .soft{font-size:.92rem;color:var(--muted)}
     form.row{display:flex;gap:.75rem;flex-wrap:wrap}
@@ -47,7 +48,7 @@
     textarea{min-height:115px;resize:vertical}
     input:focus,textarea:focus,select:focus{outline:2px solid #1f6f5f24;border-color:#1f6f5f55}
     .grow{flex:1 1 320px}
-    .btn{display:inline-flex;align-items:center;justify-content:center;gap:.4rem;padding:.9rem 1.1rem;border:none;border-radius:15px;cursor:pointer;font-weight:700}
+    .btn{display:inline-flex;align-items:center;justify-content:center;gap:.4rem;padding:.9rem 1.1rem;border:none;border-radius:15px;cursor:pointer;font-weight:700;max-width:100%}
     .btn:hover{transform:translateY(-1px)}
     .primary{background:linear-gradient(135deg,var(--green),var(--green2));color:#fff}
     .secondary{background:linear-gradient(135deg,var(--orange),#a94b2a);color:#fff}
@@ -58,29 +59,32 @@
     .banner.error{background:#c95c3414;color:#7d3218;border:1px solid #c95c3428}
     .empty{padding:1.8rem;border-radius:18px;border:1px dashed var(--line);background:#ffffff66;text-align:center;color:var(--muted)}
     .videos,.list{display:grid;gap:1rem}
-    .video{display:grid;grid-template-columns:210px 1fr;gap:1rem;padding:1rem;border-radius:22px;background:#ffffff9e;border:1px solid var(--line)}
+    .video{display:grid;grid-template-columns:minmax(0,210px) minmax(0,1fr);gap:1rem;padding:1rem;border-radius:22px;background:#ffffff9e;border:1px solid var(--line)}
     .thumb{width:100%;aspect-ratio:16/9;border-radius:16px;object-fit:cover;background:#e8d7bd}
-    .title{font-size:1.08rem;font-weight:700;line-height:1.3}
-    .channel{color:var(--muted);margin-top:.25rem}
+    .title{font-size:1.08rem;font-weight:700;line-height:1.3;overflow-wrap:anywhere}
+    .channel{color:var(--muted);margin-top:.25rem;overflow-wrap:anywhere}
     .meta{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.7rem}
     .pill,.tag{display:inline-flex;align-items:center;padding:.33rem .68rem;border-radius:999px;font-size:.8rem;font-weight:700}
     .pill{background:#1f6f5f12;color:var(--green2)}
     .tag{background:#c95c3416;color:#8a3a1d}
-    .desc{margin-top:.8rem;color:var(--muted);line-height:1.55}
+    .desc{margin-top:.8rem;color:var(--muted);line-height:1.55;overflow-wrap:anywhere}
     .actions,.mini{display:flex;flex-wrap:wrap;gap:.65rem;margin-top:1rem}
+    .actions .btn,.actions a,.mini .btn{flex:1 1 190px}
     .count{padding:.45rem .8rem;border-radius:999px;background:#1f6f5f12;color:var(--green2);font-weight:700}
     .split{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
     .quad{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.75rem}
     .mini-card{padding:1rem;border-radius:18px;background:#ffffff92;border:1px solid var(--line)}
     .mini-card strong{display:block;font-size:1.45rem;margin-top:.25rem}
     .item{display:flex;justify-content:space-between;align-items:center;gap:.8rem;padding:.9rem 1rem;border-radius:18px;background:#ffffff8c;border:1px solid var(--line)}
+    .item > div{min-width:0}
+    .item strong,.item span{overflow-wrap:anywhere}
     .item span{display:block;color:var(--muted);font-size:.9rem}
     hr{border:none;border-top:1px solid var(--line);margin:1rem 0}
     footer{margin-top:1rem;padding:1.2rem 1.3rem;border-radius:22px;background:#1f2b28ea;color:#fffaf1}
     footer p{margin-top:.5rem;color:#fffaf1d0;line-height:1.6}
     .modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;padding:1rem;background:#131a18ad;z-index:50}
     .modal.open{display:flex}
-    .player{width:min(980px,100%);background:#fffaf1;border-radius:26px;border:1px solid #ffffff8a;box-shadow:0 22px 70px #1118;max-height:calc(100vh - 2rem);overflow:auto}
+    .player{width:min(980px,100%);background:#fffaf1;border-radius:26px;border:1px solid #ffffff8a;box-shadow:0 22px 70px #1118;max-height:calc(100vh - 2rem);overflow:auto;overscroll-behavior:contain}
     .player-head{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;padding:1.1rem 1.2rem 0}
     .close{width:40px;height:40px;border:none;border-radius:50%;background:#1f2b2812;cursor:pointer;font-size:1.2rem}
     video{width:100%;aspect-ratio:16/9;border:none;border-radius:20px;background:#111}
@@ -88,7 +92,8 @@
     .embed .banner{margin-top:.8rem}
     .copy{padding:1rem 1.2rem 1.2rem}
     @media (max-width:960px){.hero,.grid,.split{grid-template-columns:1fr}.quad{grid-template-columns:repeat(2,minmax(0,1fr))}}
-    @media (max-width:760px){.top .wrap{flex-direction:column;align-items:flex-start}.stats,.quad{grid-template-columns:1fr}.video{grid-template-columns:1fr}.item{flex-direction:column;align-items:flex-start}}
+    @media (max-width:760px){.wrap{width:min(1180px,calc(100% - 1rem))}.top .wrap{flex-direction:column;align-items:flex-start}.chip{width:100%;justify-content:center}.stats,.quad{grid-template-columns:1fr}.video{grid-template-columns:1fr}.item{flex-direction:column;align-items:flex-start}.card,.panel{padding:1rem}.player{max-height:calc(100vh - 1rem);border-radius:20px}.modal{padding:.5rem}.player-head,.embed,.copy{padding-left:1rem;padding-right:1rem}.copy .actions{flex-direction:column}.copy .actions .btn,.copy .actions a{width:100%;flex:1 1 auto}}
+    @media (max-width:520px){h1{font-size:1.6rem}.mark{width:44px;height:44px;border-radius:14px}.tabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.tab{justify-content:center;padding:.75rem .85rem}.btn,.row .btn{width:100%}}
   </style>
 </head>
 <body>
@@ -291,6 +296,23 @@
           </div>
           <hr>
           <div class="split">
+            <form id="admin-access-link-form" class="list">
+              <h3>Create test access link</h3>
+              <div class="soft">Use this while outbound email is not configured. Add the user as active first, then share the generated link out of band.</div>
+              <input id="admin-access-link-email" type="email" placeholder="activeuser@example.com">
+              <button class="btn primary" type="submit">Generate link</button>
+            </form>
+            <div class="list">
+              <h3>Latest test link</h3>
+              <input id="admin-access-link-output" type="text" readonly placeholder="Generate a sign-in link to share with a tester.">
+              <div class="actions" style="margin-top:0">
+                <button class="btn ghost" id="admin-copy-access-link" type="button" disabled>Copy link</button>
+              </div>
+              <div class="banner info" id="admin-access-link-banner"></div>
+            </div>
+          </div>
+          <hr>
+          <div class="split">
             <form id="admin-block-email-form" class="list">
               <h3>Block email</h3>
               <input id="admin-block-email" type="email" placeholder="blocked@example.com">
@@ -361,6 +383,7 @@
     let library = [];
     let blocked = [];
     let adminToken = '';
+    let latestAdminAccessLink = '';
     let currentVideo = null;
     let currentPlaybackToken = '';
     let libraryLoaded = false;
@@ -474,7 +497,7 @@
       const box = $('verify-banner');
       if (!token) {
         box.className = 'banner show info';
-        box.textContent = 'Secure mode is enabled. Demo verification links are hidden, so access must be verified through your real email flow or admin controls.';
+        box.textContent = 'Secure mode is enabled. Demo verification links are hidden. If outbound email is not configured yet, ask the admin for a test access link.';
         return;
       }
 
@@ -775,7 +798,7 @@
     }
 
     function adminUsers(users) {
-      $('admin-users').innerHTML = users.length ? users.map((u) => `<div class="item"><div><strong>${esc(u.email)}</strong><span>Status: ${esc(u.status)} | Verified: ${u.email_verified ? 'yes' : 'no'}</span></div><div class="mini"><span class="pill">${esc(u.status)}</span><button class="btn ghost" data-del="${esc(u.email)}">Delete</button></div></div>`).join('') : '<div class="empty">No users found.</div>';
+      $('admin-users').innerHTML = users.length ? users.map((u) => `<div class="item"><div><strong>${esc(u.email)}</strong><span>Status: ${esc(u.status)} | Verified: ${u.email_verified ? 'yes' : 'no'}</span></div><div class="mini"><span class="pill">${esc(u.status)}</span>${u.status === 'active' && u.email_verified ? `<button class="btn ghost" data-link="${esc(u.email)}">Test link</button>` : ''}<button class="btn ghost" data-del="${esc(u.email)}">Delete</button></div></div>`).join('') : '<div class="empty">No users found.</div>';
     }
 
     function adminBlocked(emails) {
@@ -786,6 +809,21 @@
       $('admin-notices').innerHTML = notices.length ? notices.map((n) => `<div class="item"><div><strong>${esc(n.reporter_name)}</strong><span>${esc(n.video_url)}</span></div><span class="tag">${esc(n.id)}</span></div>`).join('') : '<div class="empty">No notices yet.</div>';
     }
 
+    function setAdminAccessLink(link = '', email = '') {
+      latestAdminAccessLink = link;
+      $('admin-access-link-output').value = link;
+      $('admin-copy-access-link').disabled = !link;
+      banner('admin-access-link-banner', link ? `Share this link with ${email}. It creates a browser session for that active user.` : '');
+    }
+
+    async function createAdminAccessLink(email) {
+      const r = await adminReq('/admin/users/access-link', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) });
+      const absoluteLink = `${window.location.origin}${r.access_url}`;
+      setAdminAccessLink(absoluteLink, r.email);
+      banner('admin-banner', `Test access link created for ${r.email}.`);
+      return absoluteLink;
+    }
+
     async function refreshAdmin() {
       const [summary, users, blockedEmails, notices] = await Promise.all([
         adminReq('/admin/summary'),
@@ -794,6 +832,7 @@
         adminReq('/admin/dmca/notices')
       ]);
       $('admin-panel').style.display = 'block';
+      if (!latestAdminAccessLink) setAdminAccessLink();
       adminStats(summary);
       adminUsers(users);
       adminBlocked(blockedEmails);
@@ -826,10 +865,45 @@
 
     $('admin-add-form').addEventListener('submit', async (e) => { e.preventDefault(); await adminPost('/admin/users', { email: $('admin-add-email').value.trim(), status: $('admin-add-status').value }, 'User saved.'); e.target.reset(); });
     $('admin-approve-form').addEventListener('submit', async (e) => { e.preventDefault(); await adminPost('/admin/users/approve', { email: $('admin-approve-email').value.trim() }, 'User approved.'); e.target.reset(); });
+    $('admin-access-link-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = $('admin-access-link-email').value.trim();
+      if (!email) return banner('admin-access-link-banner', 'Enter an active user email first.', 'error');
+      try {
+        await createAdminAccessLink(email);
+        e.target.reset();
+      } catch (err) {
+        banner('admin-access-link-banner', err.message, 'error');
+      }
+    });
     $('admin-block-email-form').addEventListener('submit', async (e) => { e.preventDefault(); await adminPost('/admin/users/block', { email: $('admin-block-email').value.trim() }, 'Email blocked.'); e.target.reset(); });
     $('admin-block-video-form').addEventListener('submit', async (e) => { e.preventDefault(); await adminPost('/admin/dmca/blocked-videos', { video_url: $('admin-video-url').value.trim(), title: $('admin-video-title').value.trim(), reason: 'Blocked by admin' }, 'Video blocked from preview.'); e.target.reset(); });
+    $('admin-copy-access-link').addEventListener('click', async () => {
+      if (!latestAdminAccessLink) return;
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(latestAdminAccessLink);
+          banner('admin-access-link-banner', 'Test access link copied to clipboard.');
+          return;
+        }
+        $('admin-access-link-output').focus();
+        $('admin-access-link-output').select();
+        banner('admin-access-link-banner', 'Copy the selected test access link manually.');
+      } catch (err) {
+        banner('admin-access-link-banner', 'Copy failed. Select the link field and copy it manually.', 'error');
+      }
+    });
 
     $('admin-users').addEventListener('click', async (e) => {
+      const linkEl = e.target.closest('[data-link]');
+      if (linkEl) {
+        try {
+          await createAdminAccessLink(linkEl.dataset.link);
+        } catch (err) {
+          banner('admin-banner', err.message, 'error');
+        }
+        return;
+      }
       const el = e.target.closest('[data-del]');
       if (!el) return;
       try {

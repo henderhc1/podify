@@ -19,6 +19,20 @@ def hash_access_session_token(token: str) -> str:
     return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
 
+def hash_verification_token(token: str) -> str:
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
+def issue_verification_token(user: dict[str, Any]) -> str:
+    token = secrets.token_urlsafe(24)
+    now = utc_now()
+    user["verification_token_hash"] = hash_verification_token(token)
+    user["verification_token"] = None
+    user["requested_at"] = now
+    user["updated_at"] = now
+    return token
+
+
 def issue_access_session(user: dict[str, Any]) -> str:
     token = secrets.token_urlsafe(32)
     now = utc_now()

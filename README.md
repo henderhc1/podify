@@ -73,6 +73,15 @@ Podify's public landing page and DMCA flow stay visible, but the service itself 
 - Waitlisted users can verify their email, but they still cannot use the service until promoted to `active`.
 - `POST /session/logout` clears the browser session cookie and invalidates the stored session token.
 
+## Testing Users Before Real Email Delivery
+
+Until a real outbound email provider is wired up, testers can still get in without opening the site to everyone:
+
+- An admin can add or approve a user as `active`.
+- The admin can then generate a one-time test access link from the admin UI or `POST /admin/users/access-link`.
+- Sharing that link with the tester lets them complete verification and receive the normal HTTP-only access session cookie.
+- This keeps the service gated while still making beta testing practical.
+
 ## Private Files And `.gitignore`
 
 The ignore rules keep these local-only by default:

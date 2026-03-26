@@ -1,8 +1,6 @@
 from __future__ import annotations
 
-import hashlib
 import hmac
-import secrets
 from typing import Any
 
 from fastapi import APIRouter, Body, HTTPException, Request, Response
@@ -14,6 +12,8 @@ from podify.auth import (
     clear_access_session_cookie,
     find_user_by_session_token,
     issue_access_session,
+    issue_verification_token,
+    hash_verification_token,
 )
 from podify.config import get_max_active_users, is_demo_verification_enabled
 from podify.services.users import (
@@ -26,12 +26,6 @@ from podify.services.users import (
 from podify.state import STATE_LOCK, load_state_unlocked, save_state_unlocked, utc_now
 
 router = APIRouter()
-
-
-def hash_verification_token(token: str) -> str:
-    return hashlib.sha256(token.encode("utf-8")).hexdigest()
-
-
 def find_user_by_verification_token(state: dict[str, Any], token: str) -> dict[str, Any] | None:
     token_hash = hash_verification_token(token)
     for candidate in state["users"]:
@@ -55,7 +49,6 @@ async def request_access(payload: dict[str, Any] = Body(...)) -> dict[str, Any]:
         ensure_not_blocked_email(state, email)
         user = find_user(state, email)
         now = utc_now()
-        token = secrets.token_urlsafe(24)
         already_verified = bool(user and user.get("email_verified"))
         if not user:
             user = {
@@ -64,10 +57,7 @@ async def request_access(payload: dict[str, Any] = Body(...)) -> dict[str, Any]:
             }
             state["users"].append(user)
 
-        user["verification_token_hash"] = hash_verification_token(token)
-        user["verification_token"] = None
-        user["requested_at"] = now
-        user["updated_at"] = now
+        token = issue_verification_token(user)
         if not already_verified:
             user["status"] = "pending_verification"
             user["email_verified"] = False

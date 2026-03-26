@@ -4,7 +4,7 @@ from typing import Any
 
 from fastapi import APIRouter, Body, Depends, HTTPException
 
-from podify.auth import clear_access_session, require_admin
+from podify.auth import clear_access_session, issue_verification_token, require_admin
 from podify.config import get_max_active_users
 from podify.services.users import (
     active_user_count,
@@ -79,6 +79,8 @@ async def admin_add_user(payload: dict[str, Any] = Body(...)) -> dict[str, Any]:
                 "status": requested_status,
                 "email_verified": True,
                 "verified_at": user.get("verified_at") or utc_now(),
+                "verification_token_hash": None,
+                "verification_token": None,
                 "updated_at": utc_now(),
             }
         )
@@ -104,11 +106,38 @@ async def admin_approve_user(payload: dict[str, Any] = Body(...)) -> dict[str, A
                 "status": "active",
                 "email_verified": True,
                 "verified_at": user.get("verified_at") or utc_now(),
+                "verification_token_hash": None,
+                "verification_token": None,
                 "updated_at": utc_now(),
             }
         )
         save_state_unlocked(state)
         return {"status": "approved", "user": public_user(user)}
+
+
+@router.post("/admin/users/access-link", dependencies=[Depends(require_admin)])
+async def admin_create_access_link(payload: dict[str, Any] = Body(...)) -> dict[str, str]:
+    email = validate_email(payload.get("email", ""))
+
+    with STATE_LOCK:
+        state = load_state_unlocked()
+        ensure_not_blocked_email(state, email)
+        user = find_user(state, email)
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found.")
+        if not user.get("email_verified") or user.get("status") != "active":
+            raise HTTPException(
+                status_code=409,
+                detail="Only active verified users can receive a test access link.",
+            )
+
+        token = issue_verification_token(user)
+        save_state_unlocked(state)
+        return {
+            "status": "created",
+            "email": email,
+            "access_url": f"/register/verify?token={token}",
+        }
 
 
 @router.post("/admin/users/block", dependencies=[Depends(require_admin)])

@@ -15,6 +15,7 @@ from podify.config import (
 from podify.routes.access import logout_access_session, request_access, verify_access_request
 from podify.routes.admin import (
     admin_add_user,
+    admin_create_access_link,
     admin_approve_user,
     admin_block_user,
     admin_block_video,
@@ -86,6 +87,7 @@ __all__ = [
     "active_user_count",
     "add_to_library",
     "admin_add_user",
+    "admin_create_access_link",
     "admin_approve_user",
     "admin_block_user",
     "admin_block_video",
