@@ -1,1192 +1,859 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Podify - Personal Podcast Manager</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 100%);
-            color: #e2e8f0;
-            line-height: 1.6;
-            min-height: 100vh;
-        }
-
-        .header {
-            background: rgba(30, 30, 46, 0.95);
-            backdrop-filter: blur(10px);
-            padding: 1.5rem;
-            position: fixed;
-            top: 0;
-            width: 100%;
-            z-index: 1000;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-            border-bottom: 1px solid rgba(99, 102, 241, 0.2);
-        }
-
-        .header-content {
-            max-width: 1200px;
-            margin: 0 auto;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .header h1 {
-            background: linear-gradient(45deg, #6366f1, #8b5cf6);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            font-size: 2rem;
-            font-weight: 700;
-        }
-
-        .nav-tabs {
-            display: flex;
-            gap: 1rem;
-        }
-
-        .nav-tab {
-            padding: 0.5rem 1rem;
-            background: transparent;
-            border: none;
-            color: #a1a1aa;
-            cursor: pointer;
-            border-radius: 8px;
-            transition: all 0.3s ease;
-            font-weight: 500;
-        }
-
-        .nav-tab.active {
-            background: rgba(99, 102, 241, 0.2);
-            color: #6366f1;
-        }
-
-        .nav-tab:hover {
-            background: rgba(99, 102, 241, 0.1);
-            color: #818cf8;
-        }
-
-        .container {
-            margin-top: 100px;
-            padding: 2rem;
-            max-width: 1200px;
-            margin-left: auto;
-            margin-right: auto;
-        }
-
-        .tab-content {
-            display: none;
-        }
-
-        .tab-content.active {
-            display: block;
-        }
-
-        .search-section {
-            margin-bottom: 3rem;
-        }
-
-        .search-bar {
-            display: flex;
-            gap: 1rem;
-            margin-bottom: 2rem;
-            background: rgba(30, 30, 46, 0.8);
-            padding: 1.5rem;
-            border-radius: 16px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-        }
-
-        #search-input {
-            flex: 1;
-            padding: 1rem 1.5rem;
-            background: rgba(15, 15, 23, 0.8);
-            border: 2px solid rgba(99, 102, 241, 0.3);
-            border-radius: 12px;
-            color: #e2e8f0;
-            font-size: 1.1rem;
-            transition: all 0.3s ease;
-        }
-
-        #search-input:focus {
-            outline: none;
-            border-color: #6366f1;
-            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
-        }
-
-        #search-btn {
-            padding: 1rem 2rem;
-            background: linear-gradient(45deg, #6366f1, #8b5cf6);
-            border: none;
-            border-radius: 12px;
-            color: #ffffff;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            font-size: 1.1rem;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        #search-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 20px rgba(99, 102, 241, 0.4);
-        }
-
-        .loading {
-            display: none;
-            text-align: center;
-            margin: 2rem 0;
-        }
-
-        .spinner {
-            border: 4px solid rgba(99, 102, 241, 0.2);
-            border-top: 4px solid #6366f1;
-            border-radius: 50%;
-            width: 50px;
-            height: 50px;
-            animation: spin 1s linear infinite;
-            margin: 0 auto;
-        }
-
-        @keyframes spin {
-            0% {
-                transform: rotate(0deg);
-            }
-
-            100% {
-                transform: rotate(360deg);
-            }
-        }
-
-        .results {
-            display: none;
-            margin-top: 2rem;
-        }
-
-        .result-card {
-            display: flex;
-            background: rgba(30, 30, 46, 0.8);
-            border-radius: 16px;
-            padding: 1.5rem;
-            margin-bottom: 1.5rem;
-            align-items: center;
-            gap: 1.5rem;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-            transition: all 0.3s ease;
-            border: 1px solid rgba(99, 102, 241, 0.1);
-        }
-
-        .result-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
-            border-color: rgba(99, 102, 241, 0.3);
-        }
-
-        .result-thumb {
-            width: 120px;
-            height: 90px;
-            border-radius: 12px;
-            object-fit: cover;
-            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
-        }
-
-        .result-info {
-            flex: 1;
-        }
-
-        .result-title {
-            font-weight: 600;
-            margin-bottom: 0.5rem;
-            font-size: 1.2rem;
-            color: #f1f5f9;
-        }
-
-        .result-channel {
-            color: #94a3b8;
-            font-size: 1rem;
-            margin-bottom: 0.5rem;
-        }
-
-        .result-meta {
-            display: flex;
-            gap: 1rem;
-            align-items: center;
-        }
-
-        .result-duration {
-            background: rgba(99, 102, 241, 0.2);
-            color: #6366f1;
-            padding: 0.25rem 0.75rem;
-            border-radius: 20px;
-            font-size: 0.9rem;
-            font-weight: 500;
-        }
-
-        .download-btn {
-            padding: 0.75rem 1.5rem;
-            background: linear-gradient(45deg, #10b981, #059669);
-            border: none;
-            border-radius: 12px;
-            color: #ffffff;
-            cursor: pointer;
-            font-weight: 600;
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .download-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 20px rgba(16, 185, 129, 0.4);
-        }
-
-        .download-btn.downloading {
-            background: linear-gradient(45deg, #f59e0b, #d97706);
-        }
-
-        .download-btn.done {
-            background: linear-gradient(45deg, #10b981, #059669);
-        }
-
-        .library {
-            margin-bottom: 3rem;
-        }
-
-        .library-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 2rem;
-        }
-
-        .library h2 {
-            color: #f1f5f9;
-            font-size: 1.8rem;
-            font-weight: 700;
-        }
-
-        .library-stats {
-            color: #94a3b8;
-            font-size: 0.9rem;
-        }
-
-        .library-item {
-            display: flex;
-            align-items: center;
-            background: rgba(30, 30, 46, 0.8);
-            border-radius: 12px;
-            padding: 1.5rem;
-            margin-bottom: 1rem;
-            gap: 1.5rem;
-            transition: all 0.3s ease;
-            border: 1px solid rgba(99, 102, 241, 0.1);
-        }
-
-        .library-item:hover {
-            background: rgba(30, 30, 46, 0.9);
-            border-color: rgba(99, 102, 241, 0.2);
-        }
-
-        .library-item.playing {
-            background: rgba(99, 102, 241, 0.1);
-            border: 2px solid #6366f1;
-            box-shadow: 0 0 20px rgba(99, 102, 241, 0.2);
-        }
-
-        .track-icon {
-            width: 50px;
-            height: 50px;
-            background: linear-gradient(45deg, #6366f1, #8b5cf6);
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #ffffff;
-            font-size: 1.5rem;
-        }
-
-        .library-info {
-            flex: 1;
-        }
-
-        .library-title {
-            font-weight: 600;
-            font-size: 1.1rem;
-            color: #f1f5f9;
-            margin-bottom: 0.25rem;
-        }
-
-        .library-meta {
-            display: flex;
-            gap: 1rem;
-            color: #94a3b8;
-            font-size: 0.9rem;
-        }
-
-        .play-btn,
-        .delete-btn {
-            padding: 0.75rem;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 1.2rem;
-            transition: all 0.3s ease;
-        }
-
-        .play-btn {
-            background: linear-gradient(45deg, #6366f1, #8b5cf6);
-            color: #ffffff;
-        }
-
-        .play-btn:hover {
-            transform: scale(1.05);
-            box-shadow: 0 4px 20px rgba(99, 102, 241, 0.4);
-        }
-
-        .delete-btn {
-            background: rgba(239, 68, 68, 0.2);
-            color: #ef4444;
-            border: 1px solid rgba(239, 68, 68, 0.3);
-        }
-
-        .delete-btn:hover {
-            background: rgba(239, 68, 68, 0.3);
-            transform: scale(1.05);
-        }
-
-        .player {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background: rgba(30, 30, 46, 0.95);
-            backdrop-filter: blur(20px);
-            padding: 1.5rem 2rem;
-            box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.3);
-            display: none;
-            border-top: 1px solid rgba(99, 102, 241, 0.2);
-        }
-
-        .player-frame {
-            max-width: 1200px;
-            margin: 0 auto;
-            display: flex;
-            flex-direction: column;
-            gap: 1rem;
-        }
-
-        .player-media {
-            width: min(100%, 720px);
-            align-self: center;
-            max-height: 42vh;
-            border-radius: 16px;
-            background: #050816;
-            object-fit: contain;
-            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
-        }
-
-        .player.audio-only .player-media {
-            display: none;
-        }
-
-        .player-content {
-            display: flex;
-            align-items: center;
-            gap: 2rem;
-            flex-wrap: wrap;
-        }
-
-        .player-info {
-            flex: 1 1 220px;
-            min-width: 0;
-        }
-
-        .player-title {
-            font-weight: 600;
-            font-size: 1.2rem;
-            color: #f1f5f9;
-            margin-bottom: 0.25rem;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .player-artist {
-            color: #94a3b8;
-            font-size: 0.9rem;
-        }
-
-        .player-controls {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-        }
-
-        .control-btn {
-            background: none;
-            border: none;
-            color: #e2e8f0;
-            font-size: 1.5rem;
-            cursor: pointer;
-            padding: 0.5rem;
-            border-radius: 8px;
-            transition: all 0.3s ease;
-        }
-
-        .control-btn:hover {
-            background: rgba(99, 102, 241, 0.2);
-            color: #6366f1;
-        }
-
-        .play-pause-btn {
-            font-size: 2rem;
-            background: linear-gradient(45deg, #6366f1, #8b5cf6);
-            color: #ffffff;
-            padding: 1rem;
-            border-radius: 50%;
-        }
-
-        .play-pause-btn:hover {
-            transform: scale(1.1);
-            box-shadow: 0 4px 20px rgba(99, 102, 241, 0.4);
-        }
-
-        .progress-section {
-            flex: 2 1 320px;
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-        }
-
-        .progress-container {
-            width: 100%;
-            height: 8px;
-            background: rgba(71, 85, 105, 0.5);
-            border-radius: 4px;
-            cursor: pointer;
-            position: relative;
-        }
-
-        .progress-bar {
-            height: 100%;
-            background: linear-gradient(45deg, #6366f1, #8b5cf6);
-            border-radius: 4px;
-            width: 0%;
-            transition: width 0.1s ease;
-        }
-
-        .time-display {
-            display: flex;
-            justify-content: space-between;
-            font-size: 0.8rem;
-            color: #94a3b8;
-        }
-
-        .player-options {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            margin-left: auto;
-        }
-
-        .speed-selector {
-            display: flex;
-            gap: 0.25rem;
-        }
-
-        .speed-btn {
-            padding: 0.25rem 0.5rem;
-            background: rgba(71, 85, 105, 0.5);
-            border: 1px solid rgba(99, 102, 241, 0.3);
-            border-radius: 6px;
-            color: #e2e8f0;
-            cursor: pointer;
-            font-size: 0.8rem;
-            transition: all 0.3s ease;
-        }
-
-        .speed-btn.active {
-            background: rgba(99, 102, 241, 0.2);
-            color: #6366f1;
-            border-color: #6366f1;
-        }
-
-        .speed-btn:hover {
-            background: rgba(99, 102, 241, 0.1);
-        }
-
-        .volume-container {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .volume-icon {
-            color: #94a3b8;
-            cursor: pointer;
-        }
-
-        .volume-slider {
-            width: 80px;
-            -webkit-appearance: none;
-            height: 4px;
-            background: rgba(71, 85, 105, 0.5);
-            border-radius: 2px;
-            cursor: pointer;
-        }
-
-        .volume-slider::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            width: 12px;
-            height: 12px;
-            background: #6366f1;
-            border-radius: 50%;
-            cursor: pointer;
-        }
-
-        .shuffle-btn,
-        .repeat-btn {
-            background: none;
-            border: none;
-            color: #94a3b8;
-            font-size: 1.2rem;
-            cursor: pointer;
-            padding: 0.25rem;
-            border-radius: 4px;
-            transition: all 0.3s ease;
-        }
-
-        .shuffle-btn.active,
-        .repeat-btn.active {
-            color: #6366f1;
-            background: rgba(99, 102, 241, 0.2);
-        }
-
-        .shuffle-btn:hover,
-        .repeat-btn:hover {
-            color: #818cf8;
-            background: rgba(99, 102, 241, 0.1);
-        }
-
-        .error {
-            display: none;
-            color: #ef4444;
-            text-align: center;
-            margin: 2rem 0;
-            padding: 1rem;
-            background: rgba(239, 68, 68, 0.1);
-            border-radius: 8px;
-            border: 1px solid rgba(239, 68, 68, 0.2);
-        }
-
-        .error:not(:empty) {
-            display: block;
-        }
-
-        .empty-state {
-            text-align: center;
-            padding: 3rem;
-            color: #94a3b8;
-        }
-
-        .empty-state h3 {
-            color: #f1f5f9;
-            margin-bottom: 1rem;
-        }
-
-        @media (max-width: 768px) {
-            .header-content {
-                flex-direction: column;
-                gap: 1rem;
-            }
-
-            .nav-tabs {
-                order: 2;
-            }
-
-            .container {
-                padding: 1rem;
-            }
-
-            .search-bar {
-                flex-direction: column;
-            }
-
-            .result-card {
-                flex-direction: column;
-                text-align: center;
-            }
-
-            .result-thumb {
-                width: 100%;
-                height: 200px;
-            }
-
-            .player-content {
-                flex-direction: column;
-                gap: 1rem;
-                align-items: stretch;
-            }
-
-            .progress-section {
-                order: 1;
-                width: 100%;
-            }
-
-            .player-controls {
-                order: 2;
-                justify-content: center;
-            }
-
-            .player-options {
-                order: 3;
-                justify-content: center;
-                margin-left: 0;
-            }
-
-            .player-media {
-                width: 100%;
-            }
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Podify - Discovery and Preview</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@600;700&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    :root{--bg:#f6efdf;--card:#fffaf1cc;--ink:#1f2b28;--muted:#5e6966;--line:#1f2b2822;--green:#1f6f5f;--green2:#174f44;--orange:#c95c34;--shadow:0 18px 46px #1f2b281c}
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:"Space Grotesk",sans-serif;color:var(--ink);background:radial-gradient(circle at top left,#c95c3420,transparent 28%),radial-gradient(circle at top right,#1f6f5f24,transparent 28%),linear-gradient(180deg,#f7f0e5,#efe2ca);min-height:100vh}
+    a{text-decoration:none;color:inherit}
+    button,input,textarea,select{font:inherit}
+    .wrap{width:min(1180px,calc(100% - 2rem));margin:0 auto}
+    .top{position:sticky;top:0;z-index:20;background:#f6efdfcc;backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
+    .top .wrap{display:flex;justify-content:space-between;align-items:center;gap:1rem;padding:1rem 0}
+    .brand{display:flex;align-items:center;gap:1rem}
+    .mark{width:50px;height:50px;border-radius:16px;display:grid;place-items:center;background:linear-gradient(135deg,var(--green),var(--orange));color:#fff;font-weight:700;box-shadow:var(--shadow)}
+    h1{font-family:"Fraunces",serif;font-size:1.9rem;line-height:1}
+    .sub{color:var(--muted);font-size:.95rem;margin-top:.2rem}
+    .chip{padding:.7rem 1rem;border-radius:999px;background:#1f6f5f18;color:var(--green2);font-weight:700;border:1px solid #1f6f5f24}
+    main.wrap{padding:1.25rem 0 3rem}
+    .hero{display:grid;grid-template-columns:1.5fr 1fr;gap:1rem}
+    .card,.panel{background:var(--card);border:1px solid #ffffff80;border-radius:26px;box-shadow:var(--shadow)}
+    .card{padding:1.6rem}
+    .hero h2{font-family:"Fraunces",serif;font-size:clamp(2rem,4vw,3.4rem);line-height:.95;max-width:10ch;margin:.9rem 0 1rem}
+    .hero p,.panel p,.muted{color:var(--muted);line-height:1.55}
+    .eyebrow{display:inline-block;padding:.45rem .8rem;border-radius:999px;background:#c95c3416;color:var(--orange);font-size:.74rem;font-weight:700;text-transform:uppercase}
+    .stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.8rem;margin-top:1.1rem}
+    .stat{padding:1rem;border-radius:18px;background:#ffffff80;border:1px solid var(--line)}
+    .stat strong{display:block;font-size:1.2rem}
+    .stack{display:grid;gap:1rem}
+    .tabs{display:flex;flex-wrap:wrap;gap:.65rem;margin:1.4rem 0 1rem}
+    .tab{padding:.8rem 1.1rem;border-radius:999px;border:1px solid var(--line);background:#fffaf1e6;color:var(--muted);cursor:pointer;font-weight:700}
+    .tab.active,.tab:hover{background:var(--green);color:#fff}
+    .view{display:none}
+    .view.active{display:block}
+    .grid{display:grid;grid-template-columns:1.35fr 1fr;gap:1rem}
+    .panel{padding:1.3rem}
+    .head{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;margin-bottom:1rem}
+    .head h3{font-size:1.15rem}
+    .soft{font-size:.92rem;color:var(--muted)}
+    form.row{display:flex;gap:.75rem;flex-wrap:wrap}
+    input,textarea,select{width:100%;padding:.9rem 1rem;border-radius:16px;border:1px solid var(--line);background:#ffffffcc;color:var(--ink)}
+    textarea{min-height:115px;resize:vertical}
+    input:focus,textarea:focus,select:focus{outline:2px solid #1f6f5f24;border-color:#1f6f5f55}
+    .grow{flex:1 1 320px}
+    .btn{display:inline-flex;align-items:center;justify-content:center;gap:.4rem;padding:.9rem 1.1rem;border:none;border-radius:15px;cursor:pointer;font-weight:700}
+    .btn:hover{transform:translateY(-1px)}
+    .primary{background:linear-gradient(135deg,var(--green),var(--green2));color:#fff}
+    .secondary{background:linear-gradient(135deg,var(--orange),#a94b2a);color:#fff}
+    .ghost{background:#ffffffaa;border:1px solid var(--line);color:var(--ink)}
+    .banner{display:none;margin-top:1rem;padding:.9rem 1rem;border-radius:16px;line-height:1.5}
+    .banner.show{display:block}
+    .banner.info{background:#1f6f5f12;color:var(--green2);border:1px solid #1f6f5f24}
+    .banner.error{background:#c95c3414;color:#7d3218;border:1px solid #c95c3428}
+    .empty{padding:1.8rem;border-radius:18px;border:1px dashed var(--line);background:#ffffff66;text-align:center;color:var(--muted)}
+    .videos,.list{display:grid;gap:1rem}
+    .video{display:grid;grid-template-columns:210px 1fr;gap:1rem;padding:1rem;border-radius:22px;background:#ffffff9e;border:1px solid var(--line)}
+    .thumb{width:100%;aspect-ratio:16/9;border-radius:16px;object-fit:cover;background:#e8d7bd}
+    .title{font-size:1.08rem;font-weight:700;line-height:1.3}
+    .channel{color:var(--muted);margin-top:.25rem}
+    .meta{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.7rem}
+    .pill,.tag{display:inline-flex;align-items:center;padding:.33rem .68rem;border-radius:999px;font-size:.8rem;font-weight:700}
+    .pill{background:#1f6f5f12;color:var(--green2)}
+    .tag{background:#c95c3416;color:#8a3a1d}
+    .desc{margin-top:.8rem;color:var(--muted);line-height:1.55}
+    .actions,.mini{display:flex;flex-wrap:wrap;gap:.65rem;margin-top:1rem}
+    .count{padding:.45rem .8rem;border-radius:999px;background:#1f6f5f12;color:var(--green2);font-weight:700}
+    .split{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+    .quad{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.75rem}
+    .mini-card{padding:1rem;border-radius:18px;background:#ffffff92;border:1px solid var(--line)}
+    .mini-card strong{display:block;font-size:1.45rem;margin-top:.25rem}
+    .item{display:flex;justify-content:space-between;align-items:center;gap:.8rem;padding:.9rem 1rem;border-radius:18px;background:#ffffff8c;border:1px solid var(--line)}
+    .item span{display:block;color:var(--muted);font-size:.9rem}
+    hr{border:none;border-top:1px solid var(--line);margin:1rem 0}
+    footer{margin-top:1rem;padding:1.2rem 1.3rem;border-radius:22px;background:#1f2b28ea;color:#fffaf1}
+    footer p{margin-top:.5rem;color:#fffaf1d0;line-height:1.6}
+    .modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;padding:1rem;background:#131a18ad;z-index:50}
+    .modal.open{display:flex}
+    .player{width:min(980px,100%);background:#fffaf1;border-radius:26px;border:1px solid #ffffff8a;box-shadow:0 22px 70px #1118;max-height:calc(100vh - 2rem);overflow:auto}
+    .player-head{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;padding:1.1rem 1.2rem 0}
+    .close{width:40px;height:40px;border:none;border-radius:50%;background:#1f2b2812;cursor:pointer;font-size:1.2rem}
+    video{width:100%;aspect-ratio:16/9;border:none;border-radius:20px;background:#111}
+    .embed{padding:1rem 1.2rem 0}
+    .embed .banner{margin-top:.8rem}
+    .copy{padding:1rem 1.2rem 1.2rem}
+    @media (max-width:960px){.hero,.grid,.split{grid-template-columns:1fr}.quad{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media (max-width:760px){.top .wrap{flex-direction:column;align-items:flex-start}.stats,.quad{grid-template-columns:1fr}.video{grid-template-columns:1fr}.item{flex-direction:column;align-items:flex-start}}
+  </style>
 </head>
-
 <body>
-    <div class="header">
-        <div class="header-content">
-            <h1>Podify</h1>
-            <div class="nav-tabs">
-                <button class="nav-tab active" data-tab="search">Search</button>
-                <button class="nav-tab" data-tab="library">Library</button>
-            </div>
+  <header class="top">
+    <div class="wrap">
+      <div class="brand">
+        <div class="mark">PD</div>
+        <div>
+          <h1>Podify</h1>
+          <div class="sub">Discovery first. Full viewing back on YouTube.</div>
         </div>
+      </div>
+      <div class="chip" id="cap-chip">Loading user cap...</div>
     </div>
-    <div class="container">
-        <div id="search" class="tab-content active">
-            <div class="search-section">
-                <div class="search-bar">
-                    <input type="text" id="search-input"
-                        placeholder="Search for podcasts, music, or any YouTube content...">
-                    <button id="search-btn">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                            stroke-width="2">
-                            <circle cx="11" cy="11" r="8"></circle>
-                            <path d="m21 21-4.35-4.35"></path>
-                        </svg>
-                        Search
-                    </button>
-                </div>
-                <div class="loading" id="loading">
-                    <div class="spinner"></div>
-                    <p style="margin-top: 1rem; color: #94a3b8;">Searching for content...</p>
-                </div>
-                <div class="error" id="search-error"></div>
-                <div class="results" id="results"></div>
-            </div>
+  </header>
+
+  <main class="wrap">
+    <section class="hero">
+      <article class="card">
+        <span class="eyebrow">Preview and Attribution</span>
+        <h2>Find videos worth watching, then send the full view home.</h2>
+        <p id="public-message">Podify is a non-commercial discovery layer for YouTube videos. Search, save to your library, preview on-site, then continue on YouTube with visible attribution.</p>
+        <div class="stats">
+          <div class="stat"><strong>10 results</strong><span class="soft">Each search goes deeper.</span></div>
+          <div class="stat"><strong>On-site watch</strong><span class="soft">Saved library items stay watchable here.</span></div>
+          <div class="stat"><strong>Creator support</strong><span class="soft">Every surface links back to YouTube.</span></div>
         </div>
-        <div id="library" class="tab-content">
-            <div class="library">
-                <div class="library-header">
-                    <h2>Your Library</h2>
-                    <div class="library-stats" id="library-stats">0 items</div>
-                </div>
-                <div id="library-list">
-                    <div class="empty-state">
-                        <h3>No media yet</h3>
-                        <p>Search and download some content to get started!</p>
-                    </div>
-                </div>
+      </article>
+      <div class="stack">
+        <article class="card">
+          <h3>User cap</h3>
+          <p>Podify stays capped at 1,000 active users with admin approval, deletion, and email blocking controls.</p>
+          <p style="margin-top:.8rem"><strong id="cap-detail">0 / 1000 active users</strong><br><span class="soft" id="cap-state">Checking registration status...</span></p>
+        </article>
+        <article class="card">
+          <h3>DMCA response</h3>
+          <p>Flagged videos are blocked from search and removed from the saved preview library.</p>
+          <p style="margin-top:.8rem"><strong id="dmca-agent">Pending registration</strong><br><span class="soft" id="dmca-email">dmca@podify.com</span></p>
+        </article>
+      </div>
+    </section>
+
+    <nav class="tabs" aria-label="Sections">
+      <button class="tab active" data-tab="search">Search</button>
+      <button class="tab" data-tab="library">Library</button>
+      <button class="tab" data-tab="access">Access</button>
+      <button class="tab" data-tab="dmca">DMCA</button>
+      <button class="tab" data-tab="admin">Admin</button>
+    </nav>
+
+    <section class="view active" id="search">
+      <div class="grid">
+        <article class="panel">
+          <div class="head">
+            <div>
+              <h3>Search YouTube</h3>
+              <div class="soft">Paste a YouTube URL or type a query. Podify returns up to 10 preview candidates.</div>
             </div>
+          </div>
+          <form class="row" id="search-form">
+            <input class="grow" id="search-input" type="text" placeholder="Search for podcasts, interviews, lectures, or paste a YouTube URL">
+            <button class="btn primary" type="submit">Search</button>
+          </form>
+          <div class="banner info" id="search-banner"></div>
+          <div class="videos" id="search-results" style="margin-top:1rem">
+            <div class="empty">Search for a topic or direct URL to surface previews, save them to the library, and keep the full watch path pointed at YouTube.</div>
+          </div>
+        </article>
+        <aside class="panel">
+          <h3>Preview framing</h3>
+          <p id="player-disclaimer">This is a preview. Support the creator by watching the full video on YouTube.</p>
+          <hr>
+          <h3>Attribution layer</h3>
+          <p>Every result and every saved library item includes a clear <strong>Watch on YouTube - Support the Creator</strong> path.</p>
+        </aside>
+      </div>
+    </section>
+
+    <section class="view" id="library">
+      <article class="panel">
+        <div class="head">
+          <div>
+            <h3>Saved library</h3>
+            <div class="soft">Videos added here remain watchable inside Podify.</div>
+          </div>
+          <div class="count" id="library-count">0 saved previews</div>
         </div>
+        <div class="videos" id="library-list">
+          <div class="empty">Save videos from search to build a watchable preview library without storing video files locally.</div>
+        </div>
+      </article>
+    </section>
+
+    <section class="view" id="access">
+      <div class="split">
+        <article class="panel">
+          <div class="head">
+            <div>
+              <h3>Request access</h3>
+              <div class="soft">Users verify email first. If the cap is full, they move to the waitlist.</div>
+            </div>
+          </div>
+          <form class="row" id="access-form">
+            <input class="grow" id="access-email" type="email" placeholder="you@example.com">
+            <button class="btn primary" type="submit">Request access</button>
+          </form>
+          <div class="banner info" id="access-banner"></div>
+          <div class="banner info" id="verify-banner"></div>
+          <div class="actions">
+            <button class="btn ghost" id="logout-button" type="button" style="display:none">Sign out</button>
+          </div>
+        </article>
+        <aside class="panel">
+          <h3>Registration disclaimer</h3>
+          <p id="registration-disclaimer">By registering, you agree to use Podify only for discovery and preview purposes. Support creators by watching full content on YouTube.</p>
+          <hr>
+          <div class="quad">
+            <div class="mini-card"><span>Active users</span><strong id="active-users">0</strong></div>
+            <div class="mini-card"><span>User cap</span><strong id="max-users">1000</strong></div>
+            <div class="mini-card"><span>Registration</span><strong id="open-state">Open</strong></div>
+            <div class="mini-card"><span>Saved previews</span><strong id="saved-count">0</strong></div>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <section class="view" id="dmca">
+      <div class="split">
+        <article class="panel">
+          <div class="head">
+            <div>
+              <h3>DMCA contact</h3>
+              <div class="soft">Valid notices block videos from preview and receive a response within the published window.</div>
+            </div>
+          </div>
+          <p>Copyright holders can contact <strong id="dmca-contact-email">dmca@podify.com</strong>. Agent: <strong id="dmca-contact-name">Pending registration</strong>. Target response window: <strong id="dmca-window">48 hours</strong>.</p>
+          <hr>
+          <h3>Submit a takedown notice</h3>
+          <form id="dmca-form" class="list" style="margin-top:1rem">
+            <input id="dmca-name" type="text" placeholder="Your name">
+            <input id="dmca-reporter-email" type="email" placeholder="you@example.com">
+            <input id="dmca-video-url" type="url" placeholder="YouTube URL">
+            <textarea id="dmca-work" placeholder="Describe the copyrighted work and why this preview should be removed."></textarea>
+            <textarea id="dmca-statement" placeholder="State that you have a good-faith belief the use is unauthorized."></textarea>
+            <button class="btn secondary" type="submit">Submit notice</button>
+          </form>
+          <div class="banner info" id="dmca-banner"></div>
+        </article>
+        <aside class="panel">
+          <div class="head">
+            <div>
+              <h3>Blocked from preview</h3>
+              <div class="soft">Blocked videos are removed from search and the library.</div>
+            </div>
+          </div>
+          <div class="list" id="blocked-videos"><div class="empty">No blocked videos.</div></div>
+        </aside>
+      </div>
+    </section>
+
+    <section class="view" id="admin">
+      <div class="list" style="gap:1rem">
+        <article class="panel">
+          <div class="head">
+            <div>
+              <h3>Admin access</h3>
+              <div class="soft">Use the admin token to manage users, email blocks, and preview blocks.</div>
+            </div>
+          </div>
+          <form class="row" id="admin-connect">
+            <input class="grow" id="admin-token" type="password" placeholder="Enter admin token">
+            <button class="btn primary" type="submit">Connect</button>
+          </form>
+          <div class="banner info" id="admin-banner"></div>
+        </article>
+
+        <article class="panel" id="admin-panel" style="display:none">
+          <div class="quad" id="admin-stats">
+            <div class="mini-card"><span>Active users</span><strong>0</strong></div>
+            <div class="mini-card"><span>Waitlist</span><strong>0</strong></div>
+            <div class="mini-card"><span>Blocked emails</span><strong>0</strong></div>
+            <div class="mini-card"><span>Blocked videos</span><strong>0</strong></div>
+          </div>
+          <hr>
+          <div class="split">
+            <form id="admin-add-form" class="list">
+              <h3>Add user</h3>
+              <input id="admin-add-email" type="email" placeholder="newuser@example.com">
+              <select id="admin-add-status">
+                <option value="active">Add as active user</option>
+                <option value="waitlisted">Add as waitlisted user</option>
+              </select>
+              <button class="btn primary" type="submit">Save user</button>
+            </form>
+            <form id="admin-approve-form" class="list">
+              <h3>Approve waitlisted user</h3>
+              <input id="admin-approve-email" type="email" placeholder="waitlist@example.com">
+              <button class="btn primary" type="submit">Approve user</button>
+            </form>
+          </div>
+          <hr>
+          <div class="split">
+            <form id="admin-block-email-form" class="list">
+              <h3>Block email</h3>
+              <input id="admin-block-email" type="email" placeholder="blocked@example.com">
+              <button class="btn secondary" type="submit">Block email</button>
+            </form>
+            <form id="admin-block-video-form" class="list">
+              <h3>Block video preview</h3>
+              <input id="admin-video-url" type="url" placeholder="https://www.youtube.com/watch?v=...">
+              <input id="admin-video-title" type="text" placeholder="Optional title">
+              <button class="btn secondary" type="submit">Block preview</button>
+            </form>
+          </div>
+          <hr>
+          <div class="split">
+            <div>
+              <h3>Users</h3>
+              <div class="list" id="admin-users" style="margin-top:1rem"><div class="empty">Connect with a valid admin token to load users.</div></div>
+            </div>
+            <div class="list">
+              <div>
+                <h3>Blocked emails</h3>
+                <div class="list" id="admin-blocked" style="margin-top:1rem"><div class="empty">No blocked emails.</div></div>
+              </div>
+              <div>
+                <h3>DMCA notices</h3>
+                <div class="list" id="admin-notices" style="margin-top:1rem"><div class="empty">No notices yet.</div></div>
+              </div>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <footer>
+      <strong>Footer disclaimer</strong>
+      <p id="footer-disclaimer">Podify is a non-commercial discovery tool. All content belongs to its original creators. Full viewing is intended to occur on YouTube with ads. This tool does not store video files or redistribute content. Podify is not affiliated with YouTube or Google.</p>
+    </footer>
+  </main>
+
+  <div class="modal" id="modal" aria-hidden="true">
+    <div class="player">
+      <div class="player-head">
+        <div>
+          <h3 id="modal-title">Preview</h3>
+          <div class="soft" id="modal-channel">Select a video to preview it here.</div>
+        </div>
+        <button class="close" id="close-modal" aria-label="Close preview">x</button>
+      </div>
+      <div class="embed">
+        <video id="modal-video" controls playsinline preload="metadata" controlslist="nodownload noplaybackrate" poster=""></video>
+        <div class="banner info" id="modal-video-banner"></div>
+      </div>
+      <div class="copy">
+        <p id="modal-player-disclaimer"><strong>This is a preview.</strong> Support the creator by watching the full video on YouTube.</p>
+        <p id="modal-desc" style="margin-top:.65rem;color:var(--muted);line-height:1.55">Select a video to see its description here.</p>
+        <div class="actions">
+          <button class="btn ghost" id="modal-fullscreen" type="button">Fullscreen</button>
+          <a class="btn secondary" id="modal-youtube" href="#" target="_blank" rel="noopener noreferrer">Watch on YouTube - Support the Creator</a>
+          <button class="btn ghost" id="modal-save" type="button">Save to library</button>
+        </div>
+      </div>
     </div>
-    <div class="player" id="player">
-        <div class="player-frame">
-            <video id="audio" class="player-media" preload="metadata" playsinline></video>
-            <div class="player-content">
-            <div class="player-info">
-                <div class="player-title" id="player-title">No media selected</div>
-                <div class="player-artist">Podify</div>
-            </div>
-            <div class="player-controls">
-                <button class="control-btn" id="shuffle-btn" title="Shuffle">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M16 3h5v5M4 20L21 3"></path>
-                        <path d="M20 16h-5v5M4 4l17 17"></path>
-                    </svg>
-                </button>
-                <button class="control-btn" id="prev-btn" title="Previous">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M19 20L9 12l10-8v16z"></path>
-                        <path d="M5 19V5"></path>
-                    </svg>
-                </button>
-                <button class="control-btn play-pause-btn" id="play-pause-btn">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M5 3l14 9-14 9V3z"></path>
-                    </svg>
-                </button>
-                <button class="control-btn" id="next-btn" title="Next">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M5 4l10 8-10 8V4z"></path>
-                        <path d="M19 5v14"></path>
-                    </svg>
-                </button>
-                <button class="control-btn" id="repeat-btn" title="Repeat">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M17 2l4 4-4 4"></path>
-                        <path d="M3 11V9a4 4 0 0 1 4-4h14"></path>
-                        <path d="M7 22l-4-4 4-4"></path>
-                        <path d="M21 13v2a4 4 0 0 1-4 4H3"></path>
-                    </svg>
-                </button>
-            </div>
-            <div class="progress-section">
-                <div class="progress-container" id="progress-container">
-                    <div class="progress-bar" id="progress-bar"></div>
-                </div>
-                <div class="time-display">
-                    <span id="current-time">0:00</span>
-                    <span id="total-time">0:00</span>
-                </div>
-            </div>
-            <div class="player-options">
-                <div class="speed-selector">
-                    <button class="speed-btn active" data-speed="1">1x</button>
-                    <button class="speed-btn" data-speed="1.25">1.25x</button>
-                    <button class="speed-btn" data-speed="1.5">1.5x</button>
-                    <button class="speed-btn" data-speed="2">2x</button>
-                </div>
-                <div class="volume-container">
-                    <span class="volume-icon" id="volume-icon">&#128266;</span>
-                    <input type="range" class="volume-slider" id="volume-slider" min="0" max="1" step="0.1" value="1">
-                </div>
-            </div>
-            </div>
+  </div>
+  <script>
+    const API = window.location.origin;
+    let config = null;
+    let results = [];
+    let library = [];
+    let blocked = [];
+    let adminToken = '';
+    let currentVideo = null;
+    let currentPlaybackToken = '';
+    let libraryLoaded = false;
+    let dmcaLoaded = false;
+    let accessState = null;
+
+    const $ = (id) => document.getElementById(id);
+    const esc = (v) => String(v ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+    const banner = (id, msg = '', tone = 'info') => { const el = $(id); el.textContent = msg; el.className = msg ? `banner show ${tone}` : 'banner info'; };
+    const req = async (path, opts = {}) => {
+      const r = await fetch(API + path, { credentials: 'same-origin', ...opts });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        const err = new Error(d.detail || 'Request failed.');
+        err.status = r.status;
+        err.detail = d.detail || '';
+        throw err;
+      }
+      return d;
+    };
+
+    async function activateTab(tabName) {
+      const btn = document.querySelector(`.tab[data-tab="${tabName}"]`);
+      document.querySelectorAll('.tab').forEach((b) => b.classList.toggle('active', b === btn));
+      document.querySelectorAll('.view').forEach((v) => v.classList.toggle('active', v.id === tabName));
+      if (tabName === 'library' && !libraryLoaded) {
+        await loadLibrary();
+      }
+      if (tabName === 'dmca' && !dmcaLoaded) {
+        await loadDmca();
+      }
+    }
+
+    async function showAccessRequired(message) {
+      await activateTab('access');
+      banner('access-banner', message || 'Verify your email before using Podify.', 'error');
+    }
+
+    function isProtectedAccessError(err) {
+      return Boolean(err && (err.status === 401 || err.status === 403));
+    }
+
+    document.querySelectorAll('.tab').forEach((btn) => btn.addEventListener('click', async () => {
+      document.querySelectorAll('.tab').forEach((b) => b.classList.toggle('active', b === btn));
+      document.querySelectorAll('.view').forEach((v) => v.classList.toggle('active', v.id === btn.dataset.tab));
+      if (btn.dataset.tab === 'library' && !libraryLoaded) {
+        try {
+          await loadLibrary();
+        } catch (err) {
+          if (isProtectedAccessError(err)) {
+            await showAccessRequired(err.message);
+            return;
+          }
+          banner('search-banner', err.message, 'error');
+        }
+      }
+      if (btn.dataset.tab === 'dmca' && !dmcaLoaded) {
+        await loadDmca();
+      }
+    }));
+
+    function syncConfig(data) {
+      config = data;
+      accessState = data.access || { authenticated: false, service_access: false, reason: 'Verify your email before using Podify.', user: null };
+      $('cap-chip').textContent = `${data.active_user_count} / ${data.max_active_users} active users`;
+      $('cap-detail').textContent = `${data.active_user_count} / ${data.max_active_users} active users`;
+      $('cap-state').textContent = data.registration_open ? 'Open' : 'Waitlist only';
+      $('public-message').textContent = data.disclaimers.public_message;
+      $('player-disclaimer').textContent = data.disclaimers.player;
+      $('registration-disclaimer').textContent = data.disclaimers.registration;
+      $('footer-disclaimer').textContent = data.disclaimers.footer;
+      $('active-users').textContent = data.active_user_count;
+      $('max-users').textContent = data.max_active_users;
+      $('open-state').textContent = data.registration_open ? 'Open' : 'Waitlist';
+      $('saved-count').textContent = data.library.saved_videos;
+      $('dmca-agent').textContent = data.dmca_contact.agent_name;
+      $('dmca-email').textContent = data.dmca_contact.agent_email;
+      $('dmca-contact-name').textContent = data.dmca_contact.agent_name;
+      $('dmca-contact-email').textContent = data.dmca_contact.agent_email;
+      $('dmca-window').textContent = `${data.dmca_contact.response_window_hours} hours`;
+      $('modal-player-disclaimer').textContent = data.disclaimers.player;
+      applyAccessState(accessState);
+    }
+
+    function applyAccessState(access) {
+      const reason = access.reason || 'Verify your email before using Podify.';
+      const user = access.user;
+      $('logout-button').style.display = access.service_access ? 'inline-flex' : 'none';
+
+      if (access.service_access && user) {
+        banner('access-banner', `Signed in as ${user.email}. Verified access is active.`);
+        return;
+      }
+
+      library = [];
+      libraryLoaded = false;
+      renderLibrary();
+      if (!results.length) {
+        banner('search-banner', 'Verify your email in the Access tab before searching or previewing videos.');
+      }
+
+      if (access.authenticated && user) {
+        banner('access-banner', `${user.email}: ${reason}`);
+        return;
+      }
+
+      banner('access-banner', reason);
+    }
+
+    function renderVerificationAction(token) {
+      const box = $('verify-banner');
+      if (!token) {
+        box.className = 'banner show info';
+        box.textContent = 'Secure mode is enabled. Demo verification links are hidden, so access must be verified through your real email flow or admin controls.';
+        return;
+      }
+
+      box.className = 'banner show info';
+      box.textContent = 'Prototype mode: verify the request directly.';
+      const btn = document.createElement('button');
+      btn.className = 'btn ghost';
+      btn.type = 'button';
+      btn.id = 'verify-now';
+      btn.style.marginTop = '.7rem';
+      btn.textContent = 'Complete demo verification';
+      box.appendChild(document.createElement('br'));
+      box.appendChild(btn);
+
+      btn.addEventListener('click', async () => {
+        try {
+          const vr = await req(`/register/verify?token=${encodeURIComponent(token)}`);
+          banner('verify-banner', vr.message);
+          await loadConfig();
+          if (vr.status === 'active') {
+            banner('search-banner', 'Email verified. Search and preview are now available.');
+            await activateTab('search');
+          }
+          if (adminToken) await refreshAdmin();
+        } catch (err) {
+          banner('verify-banner', err.message, 'error');
+        }
+      });
+    }
+
+    function videoCard(v, i, mode) {
+      const save = mode === 'search' ? `<button class="btn primary" data-act="save" data-i="${i}">Save to library</button>` : '';
+      const remove = mode === 'library' ? `<button class="btn ghost" data-act="remove" data-id="${esc(v.video_id)}">Remove</button>` : '';
+      return `<article class="video">
+        <img class="thumb" src="${esc(v.thumbnail_url)}" alt="Thumbnail for ${esc(v.title)}" loading="lazy" decoding="async" onerror="this.style.opacity='0.35'">
+        <div>
+          <div class="title">${esc(v.title)}</div>
+          <div class="channel">${esc(v.channel)}</div>
+          <div class="meta"><span class="pill">${esc(v.duration)}</span><span class="pill">${mode === 'search' ? 'Search result' : 'Saved in library'}</span></div>
+          <div class="desc">${esc(v.description)}</div>
+          <div class="actions">
+            <button class="btn ghost" data-act="preview" data-i="${i}">Preview on-site</button>
+            ${save}
+            ${remove}
+            <a class="btn secondary" href="${esc(v.video_url)}" target="_blank" rel="noopener noreferrer">Watch on YouTube - Support the Creator</a>
+          </div>
         </div>
-    </div>
+      </article>`;
+    }
 
-    <script>
-        // Use same origin so the app works regardless of port (e.g., 5000)
-        const API_BASE = window.location.origin;
-        let library = [];
-        let currentTrackIndex = -1;
-        let isShuffled = false;
-        let isRepeating = false;
-        let originalOrder = [];
-        const audio = document.getElementById('audio');
-        const player = document.getElementById('player');
-        const playerTitle = document.getElementById('player-title');
-        const playPauseBtn = document.getElementById('play-pause-btn');
-        const progressContainer = document.getElementById('progress-container');
-        const progressBar = document.getElementById('progress-bar');
-        const currentTimeEl = document.getElementById('current-time');
-        const totalTimeEl = document.getElementById('total-time');
-        const volumeSlider = document.getElementById('volume-slider');
-        const volumeIcon = document.getElementById('volume-icon');
+    function renderResults() {
+      $('search-results').innerHTML = results.length ? results.map((v, i) => videoCard(v, i, 'search')).join('') : '<div class="empty">No results matched this query. Try another search term or paste a direct YouTube URL.</div>';
+    }
 
-        // Tab switching
-        document.querySelectorAll('.nav-tab').forEach(tab => {
-            tab.addEventListener('click', () => {
-                document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
-                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-                tab.classList.add('active');
-                document.getElementById(tab.dataset.tab).classList.add('active');
-            });
-        });
+    function renderLibrary() {
+      $('library-count').textContent = `${library.length} saved previews`;
+      $('saved-count').textContent = library.length;
+      $('library-list').innerHTML = library.length ? library.map((v, i) => videoCard(v, i, 'library')).join('') : '<div class="empty">Save videos from search to keep a watchable preview library inside Podify.</div>';
+    }
 
-        // Load library on page load
-        loadLibrary();
+    function renderBlocked() {
+      $('blocked-videos').innerHTML = blocked.length ? blocked.map((v) => `<div class="item"><div><strong>${esc(v.title)}</strong><span>${esc(v.reason || 'Blocked from preview')}</span></div><span class="tag">${esc(v.source || 'blocklist')}</span></div>`).join('') : '<div class="empty">No blocked videos.</div>';
+    }
 
-        // Search functionality
-        document.getElementById('search-btn').addEventListener('click', performSearch);
-        document.getElementById('search-input').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') performSearch();
-        });
+    function resetVideoPlayer() {
+      const video = $('modal-video');
+      video.pause();
+      video.removeAttribute('src');
+      while (video.firstChild) video.removeChild(video.firstChild);
+      video.load();
+    }
 
-        async function performSearch() {
-            const query = document.getElementById('search-input').value.trim();
-            if (!query) return;
+    function applyPlayback(playback) {
+      const video = $('modal-video');
+      resetVideoPlayer();
+      $('modal-title').textContent = playback.title || (currentVideo ? currentVideo.title : 'Preview');
+      $('modal-channel').textContent = playback.channel || (currentVideo ? currentVideo.channel : 'Unknown creator');
+      $('modal-desc').textContent = playback.description || (currentVideo ? currentVideo.description : 'Open this video on YouTube for the full watch experience and creator support.');
+      video.poster = playback.thumbnail_url || (currentVideo ? currentVideo.thumbnail_url : '');
 
-            document.getElementById('loading').style.display = 'block';
-            document.getElementById('search-error').textContent = '';
-            document.getElementById('results').style.display = 'none';
+      const sources = (playback.sources || []).length
+        ? playback.sources
+        : (playback.stream_url ? [{ url: playback.stream_url, mime_type: playback.mime_type || '' }] : []);
 
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 12000);
+      sources.forEach((source) => {
+        if (!source.url) return;
+        const el = document.createElement('source');
+        el.src = source.url;
+        if (source.mime_type) el.type = source.mime_type;
+        video.appendChild(el);
+      });
 
-            try {
-                const response = await fetch(`${API_BASE}/search?q=${encodeURIComponent(query)}`, { signal: controller.signal });
-                if (!response.ok) throw new Error('Search failed. Please try again.');
-                const results = await response.json();
-                displayResults(results);
-            } catch (error) {
-                if (error.name === 'AbortError') {
-                    document.getElementById('search-error').textContent = 'Search timed out. Try again.';
-                } else {
-                    document.getElementById('search-error').textContent = error.message;
-                }
-            } finally {
-                clearTimeout(timeoutId);
-                document.getElementById('loading').style.display = 'none';
-            }
+      banner('modal-video-banner');
+      if (playback.video_url) $('modal-youtube').href = playback.video_url;
+      video.load();
+      video.play().catch(() => {});
+    }
+
+    async function requestVideoFullscreen() {
+      const video = $('modal-video');
+      if (video.requestFullscreen) {
+        await video.requestFullscreen();
+        return;
+      }
+      if (video.webkitEnterFullscreen) {
+        video.webkitEnterFullscreen();
+        return;
+      }
+      if (video.webkitRequestFullscreen) {
+        video.webkitRequestFullscreen();
+      }
+    }
+
+    async function openVideo(v) {
+      currentVideo = v;
+      const playbackToken = `${v.video_id}:${Date.now()}`;
+      currentPlaybackToken = playbackToken;
+      $('modal-title').textContent = v.title;
+      $('modal-channel').textContent = v.channel;
+      $('modal-player-disclaimer').textContent = config ? config.disclaimers.player : 'This is a preview. Support the creator by watching the full video on YouTube.';
+      $('modal-desc').textContent = v.description || 'Open this video on YouTube for the full watch experience and creator support.';
+      $('modal-youtube').href = v.video_url;
+      $('modal-video').poster = v.thumbnail_url || '';
+      banner('modal-video-banner', 'Resolving preview stream...');
+      $('modal').classList.add('open');
+      $('modal').setAttribute('aria-hidden', 'false');
+
+      try {
+        const playback = await req(v.playback_url || `/playback/${encodeURIComponent(v.video_id)}`);
+        if (currentPlaybackToken !== playbackToken) return;
+        applyPlayback(playback);
+      } catch (err) {
+        if (currentPlaybackToken !== playbackToken) return;
+        resetVideoPlayer();
+        if (isProtectedAccessError(err)) {
+          closeVideo();
+          await showAccessRequired(err.message);
+          return;
         }
+        banner('modal-video-banner', err.message || 'Preview unavailable. Use Watch on YouTube instead.', 'error');
+      }
+    }
 
-        function displayResults(results) {
-            const resultsEl = document.getElementById('results');
-            resultsEl.innerHTML = '';
-            if (results.length === 0) {
-                resultsEl.innerHTML = '<div class="empty-state"><h3>No results found</h3><p>Try a different search term.</p></div>';
-            } else {
-                results.forEach(result => {
-                    const card = document.createElement('div');
-                    card.className = 'result-card';
-                    card.innerHTML = `
-                        <img src="${result.thumbnail_url}" alt="Thumbnail" class="result-thumb" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9IjkwIiB2aWV3Qm94PSIwIDAgMTIwIDkwIiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgo8cmVjdCB3aWR0aD0iMTIwIiBoZWlnaHQ9IjkwIiBmaWxsPSIjMWE0MTY0Ii8+Cjx0ZXh0IHg9IjYwIiB5PSI0NSIgZmlsbD0iIzk0YTNiOCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zNWVtIiBmb250LXNpemU9IjEyIj5ObyBJbWFnZTwvdGV4dD4KPHN2Zz4=';">
-                        <div class="result-info">
-                            <div class="result-title">${result.title}</div>
-                            <div class="result-channel">${result.channel}</div>
-                            <div class="result-meta">
-                                <span class="result-duration">${result.duration}</span>
-                            </div>
-                        </div>
-                        <button class="download-btn" data-url="${result.video_url}">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                                <polyline points="7,10 12,15 17,10"></polyline>
-                                <line x1="12" y1="15" x2="12" y2="3"></line>
-                            </svg>
-                            Download Video
-                        </button>
-                    `;
-                    resultsEl.appendChild(card);
-                });
-            }
-            resultsEl.style.display = 'block';
+    function closeVideo() {
+      currentPlaybackToken = '';
+      banner('modal-video-banner');
+      resetVideoPlayer();
+      $('modal').classList.remove('open');
+      $('modal').setAttribute('aria-hidden', 'true');
+    }
 
-            // Add download listeners
-            document.querySelectorAll('.download-btn').forEach(btn => {
-                btn.addEventListener('click', async (e) => {
-                    const url = e.target.closest('.download-btn').dataset.url;
-                    const button = e.target.closest('.download-btn');
-                    const originalHTML = button.innerHTML;
-                    button.innerHTML = '<div class="spinner" style="width: 16px; height: 16px; border-width: 2px;"></div> Downloading...';
-                    button.classList.add('downloading');
-                    button.disabled = true;
+    async function loadConfig() { syncConfig(await req('/config')); }
+    async function loadLibrary() { library = await req('/library'); libraryLoaded = true; renderLibrary(); }
+    async function loadDmca() {
+      const d = await req('/dmca');
+      blocked = d.blocked_videos || [];
+      dmcaLoaded = true;
+      renderBlocked();
+      $('dmca-agent').textContent = d.contact.agent_name;
+      $('dmca-email').textContent = d.contact.agent_email;
+      $('dmca-contact-name').textContent = d.contact.agent_name;
+      $('dmca-contact-email').textContent = d.contact.agent_email;
+      $('dmca-window').textContent = `${d.contact.response_window_hours} hours`;
+    }
 
-                    try {
-                        const response = await fetch(`${API_BASE}/download`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ url })
-                        });
-                        if (!response.ok) throw new Error('Download failed. Please try again.');
-                        button.innerHTML = 'Done';
-                        button.classList.remove('downloading');
-                        button.classList.add('done');
-                        loadLibrary(); // Refresh library
-                    } catch (error) {
-                        button.innerHTML = 'Error';
-                        button.classList.remove('downloading');
-                        console.error(error);
-                    } finally {
-                        setTimeout(() => {
-                            button.innerHTML = originalHTML;
-                            button.classList.remove('done');
-                            button.disabled = false;
-                        }, 3000);
-                    }
-                });
-            });
+    $('search-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      banner('search-banner');
+      const q = $('search-input').value.trim();
+      if (!q) return banner('search-banner', 'Enter a search term or paste a YouTube URL.', 'error');
+      banner('search-banner', 'Searching for up to 10 videos...');
+      try {
+        results = await req(`/search?q=${encodeURIComponent(q)}`);
+        renderResults();
+        banner('search-banner', `Loaded ${results.length} result${results.length === 1 ? '' : 's'}.`);
+      } catch (err) {
+        results = [];
+        renderResults();
+        if (isProtectedAccessError(err)) {
+          await showAccessRequired(err.message);
+          return;
         }
+        banner('search-banner', err.message, 'error');
+      }
+    });
 
-        async function loadLibrary() {
-            try {
-                const response = await fetch(`${API_BASE}/files`);
-                if (!response.ok) throw new Error('Failed to load library');
-                library = await response.json();
-                originalOrder = [...library];
-                displayLibrary();
-                updateLibraryStats();
-            } catch (error) {
-                console.error(error);
-            }
+    async function saveVideo(v) {
+      try {
+        const r = await req('/library', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(v) });
+        await Promise.all([loadLibrary(), loadConfig()]);
+        banner('search-banner', r.status === 'exists' ? 'This video is already in the library.' : 'Saved to the library. It remains watchable inside Podify.');
+        await activateTab('library');
+      } catch (err) {
+        if (isProtectedAccessError(err)) {
+          await showAccessRequired(err.message);
+          return;
         }
+        banner('search-banner', err.message, 'error');
+      }
+    }
 
-        function updateLibraryStats() {
-            const statsEl = document.getElementById('library-stats');
-            const totalSize = library.reduce((sum, file) => sum + file.size_mb, 0);
-            statsEl.textContent = `${library.length} items | ${totalSize.toFixed(1)} MB`;
+    $('search-results').addEventListener('click', async (e) => {
+      const el = e.target.closest('[data-act]');
+      if (!el) return;
+      const v = results[Number(el.dataset.i)];
+      if (!v) return;
+      if (el.dataset.act === 'preview') await openVideo(v);
+      if (el.dataset.act === 'save') await saveVideo(v);
+    });
+
+    $('library-list').addEventListener('click', async (e) => {
+      const el = e.target.closest('[data-act]');
+      if (!el) return;
+      if (el.dataset.act === 'remove') {
+        try {
+          await req(`/library/${encodeURIComponent(el.dataset.id)}`, { method: 'DELETE' });
+          await Promise.all([loadLibrary(), loadConfig()]);
+        } catch (err) {
+          if (isProtectedAccessError(err)) {
+            await showAccessRequired(err.message);
+            return;
+          }
+          banner('search-banner', err.message, 'error');
         }
+        return;
+      }
+      const v = library[Number(el.dataset.i)];
+      if (v && el.dataset.act === 'preview') await openVideo(v);
+    });
 
-        function displayLibrary() {
-            const listEl = document.getElementById('library-list');
-            listEl.innerHTML = '';
-            if (library.length === 0) {
-                listEl.innerHTML = '<div class="empty-state"><h3>No media yet</h3><p>Search and download some content to get started!</p></div>';
-                return;
-            }
-            library.forEach((file, index) => {
-                const item = document.createElement('div');
-                item.className = `library-item ${index === currentTrackIndex ? 'playing' : ''}`;
-                item.innerHTML = `
-                    <div class="track-icon">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M9 19V6l12-3v13"></path>
-                            <path d="M9 12l12-3"></path>
-                            <circle cx="6" cy="19" r="3"></circle>
-                        </svg>
-                    </div>
-                    <div class="library-info">
-                        <div class="library-title">${file.title}</div>
-                        <div class="library-meta">
-                            <span>${file.media_type === 'video' ? 'Video' : 'Audio'}</span>
-                            <span>${file.size_mb.toFixed(1)} MB</span>
-                            <span>${new Date(file.date_added).toLocaleDateString()}</span>
-                        </div>
-                    </div>
-                    <button class="play-btn" data-index="${index}" title="Play">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M5 3l14 9-14 9V3z"></path>
-                        </svg>
-                    </button>
-                    <button class="delete-btn" data-filename="${file.filename}" title="Delete">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M3 6h18"></path>
-                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                            <line x1="10" y1="11" x2="10" y2="17"></line>
-                            <line x1="14" y1="11" x2="14" y2="17"></line>
-                        </svg>
-                    </button>
-                `;
-                listEl.appendChild(item);
-            });
+    $('close-modal').addEventListener('click', closeVideo);
+    $('modal').addEventListener('click', (e) => { if (e.target === $('modal')) closeVideo(); });
+    $('modal-save').addEventListener('click', async () => { if (currentVideo) await saveVideo(currentVideo); });
+    $('modal-fullscreen').addEventListener('click', async () => { await requestVideoFullscreen(); });
+    $('modal-video').addEventListener('error', () => {
+      banner('modal-video-banner', 'Preview stream failed to load. Use Watch on YouTube instead.', 'error');
+    });
+    window.addEventListener('keydown', (e) => { if (e.key === 'Escape' && $('modal').classList.contains('open')) closeVideo(); });
 
-            // Add play listeners
-            document.querySelectorAll('.play-btn').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    const index = parseInt(e.target.closest('.play-btn').dataset.index);
-                    playTrack(index);
-                });
-            });
+    $('access-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      banner('access-banner');
+      banner('verify-banner');
+      const email = $('access-email').value.trim();
+      if (!email) return banner('access-banner', 'Enter an email address to request access.', 'error');
+      try {
+        const r = await req('/register', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) });
+        banner('access-banner', r.message || 'Request received.');
+        renderVerificationAction(r.verification_token);
+      } catch (err) {
+        banner('access-banner', err.message, 'error');
+      }
+    });
 
-            // Add delete listeners
-            document.querySelectorAll('.delete-btn').forEach(btn => {
-                btn.addEventListener('click', async (e) => {
-                    if (!confirm('Are you sure you want to delete this item?')) return;
-                    const filename = e.target.closest('.delete-btn').dataset.filename;
-                    try {
-                        const response = await fetch(`${API_BASE}/media/${encodeURIComponent(filename)}`, { method: 'DELETE' });
-                        if (!response.ok) throw new Error('Delete failed');
-                        loadLibrary();
-                        if (currentTrackIndex >= library.length - 1) {
-                            stopPlayback();
-                        }
-                    } catch (error) {
-                        console.error(error);
-                    }
-                });
-            });
-        }
+    $('logout-button').addEventListener('click', async () => {
+      try {
+        await req('/session/logout', { method: 'POST' });
+        results = [];
+        library = [];
+        libraryLoaded = false;
+        currentVideo = null;
+        renderResults();
+        renderLibrary();
+        banner('verify-banner');
+        await loadConfig();
+        banner('access-banner', 'Signed out. Verify your email again to restore service access.');
+        await activateTab('access');
+      } catch (err) {
+        banner('access-banner', err.message, 'error');
+      }
+    });
 
-        function shuffleArray(array) {
-            for (let i = array.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [array[i], array[j]] = [array[j], array[i]];
-            }
-            return array;
-        }
+    $('dmca-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      banner('dmca-banner');
+      const payload = {
+        reporter_name: $('dmca-name').value.trim(),
+        reporter_email: $('dmca-reporter-email').value.trim(),
+        video_url: $('dmca-video-url').value.trim(),
+        work_description: $('dmca-work').value.trim(),
+        statement: $('dmca-statement').value.trim()
+      };
+      try {
+        const r = await req('/dmca/notices', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+        banner('dmca-banner', r.message);
+        $('dmca-form').reset();
+        await Promise.all([loadDmca(), loadLibrary(), loadConfig()]);
+        if (adminToken) await refreshAdmin();
+      } catch (err) {
+        banner('dmca-banner', err.message, 'error');
+      }
+    });
 
-        function playTrack(index) {
-            if (index < 0 || index >= library.length) return;
-            currentTrackIndex = index;
-            const file = library[index];
-            player.classList.toggle('audio-only', file.media_type === 'audio');
-            audio.src = `${API_BASE}/media/${encodeURIComponent(file.filename)}`;
-            playerTitle.textContent = file.title;
-            player.style.display = 'flex';
-            audio.play().catch((error) => console.error(error));
-            updatePlayPauseBtn();
-            displayLibrary();
+    const adminReq = (path, opts = {}) => req(path, { ...opts, headers: { 'X-Admin-Token': adminToken, ...(opts.headers || {}) } });
 
-            // Media Session API
-            if ('mediaSession' in navigator) {
-                navigator.mediaSession.metadata = new MediaMetadata({
-                    title: file.title,
-                    artist: 'Podify',
-                });
-                navigator.mediaSession.setActionHandler('play', () => audio.play().catch((error) => console.error(error)));
-                navigator.mediaSession.setActionHandler('pause', () => audio.pause());
-                navigator.mediaSession.setActionHandler('previoustrack', () => playTrack(currentTrackIndex - 1));
-                navigator.mediaSession.setActionHandler('nexttrack', () => playTrack(currentTrackIndex + 1));
-            }
-        }
+    function adminStats(s) {
+      $('admin-stats').innerHTML = `<div class="mini-card"><span>Active users</span><strong>${s.active_user_count}</strong></div><div class="mini-card"><span>Waitlist</span><strong>${s.waitlisted_user_count}</strong></div><div class="mini-card"><span>Blocked emails</span><strong>${s.blocked_email_count}</strong></div><div class="mini-card"><span>Blocked videos</span><strong>${s.dmca_blocked_video_count}</strong></div>`;
+    }
 
-        function stopPlayback() {
-            audio.pause();
-            audio.currentTime = 0;
-            audio.removeAttribute('src');
-            audio.load();
-            currentTrackIndex = -1;
-            player.classList.remove('audio-only');
-            player.style.display = 'none';
-            progressBar.style.width = '0%';
-            currentTimeEl.textContent = '0:00';
-            totalTimeEl.textContent = '0:00';
-            displayLibrary();
-        }
+    function adminUsers(users) {
+      $('admin-users').innerHTML = users.length ? users.map((u) => `<div class="item"><div><strong>${esc(u.email)}</strong><span>Status: ${esc(u.status)} | Verified: ${u.email_verified ? 'yes' : 'no'}</span></div><div class="mini"><span class="pill">${esc(u.status)}</span><button class="btn ghost" data-del="${esc(u.email)}">Delete</button></div></div>`).join('') : '<div class="empty">No users found.</div>';
+    }
 
-        // Media event listeners
-        audio.addEventListener('loadedmetadata', () => {
-            player.classList.toggle('audio-only', !audio.videoWidth && !audio.videoHeight);
-            totalTimeEl.textContent = formatTime(audio.duration);
-        });
+    function adminBlocked(emails) {
+      $('admin-blocked').innerHTML = emails.length ? emails.map((email) => `<div class="item"><div><strong>${esc(email)}</strong><span>Blocked from registration and approval.</span></div><button class="btn ghost" data-unblock="${esc(email)}">Unblock</button></div>`).join('') : '<div class="empty">No blocked emails.</div>';
+    }
 
-        audio.addEventListener('timeupdate', () => {
-            const duration = Number.isFinite(audio.duration) ? audio.duration : 0;
-            const progress = duration > 0 ? (audio.currentTime / duration) * 100 : 0;
-            progressBar.style.width = `${progress}%`;
-            currentTimeEl.textContent = formatTime(audio.currentTime);
-        });
+    function adminNotices(notices) {
+      $('admin-notices').innerHTML = notices.length ? notices.map((n) => `<div class="item"><div><strong>${esc(n.reporter_name)}</strong><span>${esc(n.video_url)}</span></div><span class="tag">${esc(n.id)}</span></div>`).join('') : '<div class="empty">No notices yet.</div>';
+    }
 
-        audio.addEventListener('ended', () => {
-            if (isRepeating) {
-                audio.currentTime = 0;
-                audio.play().catch((error) => console.error(error));
-            } else {
-                playTrack(currentTrackIndex + 1);
-            }
-        });
+    async function refreshAdmin() {
+      const [summary, users, blockedEmails, notices] = await Promise.all([
+        adminReq('/admin/summary'),
+        adminReq('/admin/users'),
+        adminReq('/admin/blocked-emails'),
+        adminReq('/admin/dmca/notices')
+      ]);
+      $('admin-panel').style.display = 'block';
+      adminStats(summary);
+      adminUsers(users);
+      adminBlocked(blockedEmails);
+      adminNotices(notices);
+    }
 
-        audio.addEventListener('play', updatePlayPauseBtn);
-        audio.addEventListener('pause', updatePlayPauseBtn);
+    $('admin-connect').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      banner('admin-banner');
+      adminToken = $('admin-token').value.trim();
+      if (!adminToken) return banner('admin-banner', 'Enter the admin token first.', 'error');
+      try {
+        await refreshAdmin();
+        banner('admin-banner', 'Admin token accepted.');
+      } catch (err) {
+        $('admin-panel').style.display = 'none';
+        banner('admin-banner', err.message, 'error');
+      }
+    });
 
-        function updatePlayPauseBtn() {
-            const icon = playPauseBtn.querySelector('svg');
-            if (audio.paused) {
-                icon.innerHTML = '<path d="M5 3l14 9-14 9V3z"></path>';
-            } else {
-                icon.innerHTML = '<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"></path>';
-            }
-        }
+    async function adminPost(path, payload, msg) {
+      try {
+        await adminReq(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+        banner('admin-banner', msg);
+        await Promise.all([refreshAdmin(), loadConfig(), loadDmca(), loadLibrary()]);
+      } catch (err) {
+        banner('admin-banner', err.message, 'error');
+      }
+    }
 
-        // Controls
-        playPauseBtn.addEventListener('click', () => {
-            if (audio.paused) {
-                audio.play().catch((error) => console.error(error));
-            } else {
-                audio.pause();
-            }
-        });
+    $('admin-add-form').addEventListener('submit', async (e) => { e.preventDefault(); await adminPost('/admin/users', { email: $('admin-add-email').value.trim(), status: $('admin-add-status').value }, 'User saved.'); e.target.reset(); });
+    $('admin-approve-form').addEventListener('submit', async (e) => { e.preventDefault(); await adminPost('/admin/users/approve', { email: $('admin-approve-email').value.trim() }, 'User approved.'); e.target.reset(); });
+    $('admin-block-email-form').addEventListener('submit', async (e) => { e.preventDefault(); await adminPost('/admin/users/block', { email: $('admin-block-email').value.trim() }, 'Email blocked.'); e.target.reset(); });
+    $('admin-block-video-form').addEventListener('submit', async (e) => { e.preventDefault(); await adminPost('/admin/dmca/blocked-videos', { video_url: $('admin-video-url').value.trim(), title: $('admin-video-title').value.trim(), reason: 'Blocked by admin' }, 'Video blocked from preview.'); e.target.reset(); });
 
-        document.getElementById('prev-btn').addEventListener('click', () => {
-            playTrack(currentTrackIndex - 1);
-        });
+    $('admin-users').addEventListener('click', async (e) => {
+      const el = e.target.closest('[data-del]');
+      if (!el) return;
+      try {
+        await adminReq(`/admin/users/${encodeURIComponent(el.dataset.del)}`, { method: 'DELETE' });
+        banner('admin-banner', 'User deleted.');
+        await Promise.all([refreshAdmin(), loadConfig()]);
+      } catch (err) {
+        banner('admin-banner', err.message, 'error');
+      }
+    });
 
-        document.getElementById('next-btn').addEventListener('click', () => {
-            playTrack(currentTrackIndex + 1);
-        });
+    $('admin-blocked').addEventListener('click', async (e) => {
+      const el = e.target.closest('[data-unblock]');
+      if (!el) return;
+      try {
+        await adminReq(`/admin/blocked-emails/${encodeURIComponent(el.dataset.unblock)}`, { method: 'DELETE' });
+        banner('admin-banner', 'Email unblocked.');
+        await Promise.all([refreshAdmin(), loadConfig()]);
+      } catch (err) {
+        banner('admin-banner', err.message, 'error');
+      }
+    });
 
-        document.getElementById('shuffle-btn').addEventListener('click', () => {
-            isShuffled = !isShuffled;
-            document.getElementById('shuffle-btn').classList.toggle('active');
-            if (isShuffled) {
-                library = shuffleArray([...originalOrder]);
-            } else {
-                library = [...originalOrder];
-            }
-            displayLibrary();
-            // Update currentTrackIndex to match the new order
-            if (currentTrackIndex !== -1) {
-                const currentFile = originalOrder[currentTrackIndex];
-                currentTrackIndex = library.findIndex(file => file.filename === currentFile.filename);
-            }
-        });
-
-        document.getElementById('repeat-btn').addEventListener('click', () => {
-            isRepeating = !isRepeating;
-            document.getElementById('repeat-btn').classList.toggle('active');
-        });
-
-        progressContainer.addEventListener('click', (e) => {
-            if (!Number.isFinite(audio.duration) || audio.duration <= 0) return;
-            const rect = progressContainer.getBoundingClientRect();
-            const percent = (e.clientX - rect.left) / rect.width;
-            audio.currentTime = percent * audio.duration;
-        });
-
-        document.querySelectorAll('.speed-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const speed = parseFloat(e.target.dataset.speed);
-                audio.playbackRate = speed;
-                document.querySelectorAll('.speed-btn').forEach(b => b.classList.remove('active'));
-                e.target.classList.add('active');
-            });
-        });
-
-        volumeSlider.addEventListener('input', (e) => {
-            audio.volume = e.target.value;
-            updateVolumeIcon();
-        });
-
-        volumeIcon.addEventListener('click', () => {
-            if (audio.volume > 0) {
-                audio.volume = 0;
-                volumeSlider.value = 0;
-            } else {
-                audio.volume = 1;
-                volumeSlider.value = 1;
-            }
-            updateVolumeIcon();
-        });
-
-        function updateVolumeIcon() {
-            if (audio.volume === 0) {
-                volumeIcon.textContent = String.fromCodePoint(128263);
-            } else if (audio.volume < 0.5) {
-                volumeIcon.textContent = String.fromCodePoint(128265);
-            } else {
-                volumeIcon.textContent = String.fromCodePoint(128266);
-            }
-        }
-
-        function formatTime(seconds) {
-            if (!Number.isFinite(seconds) || seconds < 0) return '0:00';
-            const mins = Math.floor(seconds / 60);
-            const secs = Math.floor(seconds % 60);
-            return `${mins}:${secs.toString().padStart(2, '0')}`;
-        }
-
-        // Keyboard shortcuts
-        document.addEventListener('keydown', (e) => {
-            if (e.target.tagName === 'INPUT') return;
-            switch (e.code) {
-                case 'Space':
-                    e.preventDefault();
-                    playPauseBtn.click();
-                    break;
-                case 'ArrowLeft':
-                    e.preventDefault();
-                    document.getElementById('prev-btn').click();
-                    break;
-                case 'ArrowRight':
-                    e.preventDefault();
-                    document.getElementById('next-btn').click();
-                    break;
-            }
-        });
-    </script>
+    loadConfig().catch((err) => banner('search-banner', err.message, 'error'));
+  </script>
 </body>
-
 </html>

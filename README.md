@@ -1,46 +1,112 @@
-# Podify - Personal YouTube Podcast Manager
+# Podify
 
-## Setup (Windows)
+Podify is a non-commercial YouTube discovery and preview tool. Users can request access with an email address, verify that email, preview videos inside a custom interface, save them to a lightweight library, and then continue to YouTube through clear attribution links.
 
-### 1. Install dependencies
+## Product Direction
+
+- Search returns up to 10 YouTube results per query.
+- Preview playback is resolved on demand with `yt-dlp` and rendered in Podify's existing HTML5 player UI.
+- Search, playback, and library access are gated behind verified active-user sessions.
+- Every result and saved item includes `Watch on YouTube - Support the Creator`.
+- Registration supports email verification, waitlisting, and a hard active-user cap.
+- Admin controls support adding, approving, deleting, and blocking users by email.
+- DMCA notice handling blocks videos from preview and removes them from the saved library.
+- Legal disclaimers are shown in the UI to keep the product framed as discovery and preview.
+
+This repository is set up so most of the project remains open, while local state, secrets, and operator-specific settings stay untracked.
+
+## Project Layout
+
+```text
+main.py                  Compatibility entrypoint for local runs and Railway (`main:app`)
+podify/app.py            FastAPI app wiring
+podify/routes/           Public, access, and admin route modules
+podify/services/         Search, video, and user helper functions
+podify/state.py          JSON state loading/saving
+podify/config.py         Environment and local-settings helpers
+static/index.html        Single-page frontend
+data/                    Local JSON state directory (ignored except for .gitkeep)
+downloads/               Local scratch/download area (ignored except for .gitkeep)
 ```
+
+## Preview Playback
+
+Podify keeps the current UI, but preview playback is resolved through `yt-dlp` instead of a YouTube iframe. When a user opens a preview, the backend resolves browser-playable source URLs for that specific YouTube video and returns them to the frontend player. Podify does not permanently store downloaded video files; playback URLs are resolved on demand and cached briefly in memory.
+
+## Setup
+
+```powershell
+python -m venv .venv
+.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
-```
-
-### 2. Make sure ffmpeg is installed
-Download from https://ffmpeg.org/download.html and add it to your PATH.
-Or install via winget:
-```
-winget install ffmpeg
-```
-
-Verify installation with:
-```
-ffmpeg -version
-ffprobe -version
-```
-
-### 3. Run
-```
 uvicorn main:app --reload
 ```
 
-### 4. Open browser
-Go to: http://localhost:8000
+Open `http://localhost:8000`.
 
-## Usage
-- Search for any YouTube video
-- Click "↓ Save" to download as mp3
-- Click any track in Your Library to play
-- Audio continues when screen is off (lock screen controls appear)
-- Use speed button to change playback rate
+## Configuration
 
-## Folder structure
+Podify reads configuration from environment variables first. If you want a private local-only Python config file, copy `podify/local_settings.py.example` to `podify/local_settings.py`. That file is intentionally ignored by Git.
+
+Supported settings:
+
+```powershell
+$env:PODIFY_MAX_ACTIVE_USERS="1000"
+$env:PODIFY_ADMIN_TOKEN="replace-me"
+$env:PODIFY_EXPOSE_DEMO_VERIFICATION="0"
+$env:PODIFY_DMCA_AGENT_NAME="Your DMCA Agent"
+$env:PODIFY_DMCA_AGENT_EMAIL="dmca@example.com"
+$env:PODIFY_DMCA_RESPONSE_WINDOW_HOURS="48"
+$env:PODIFY_STATE_PATH="data/state.json"
 ```
-podify/
-  main.py          ← backend
-  requirements.txt
-  static/
-    index.html     ← frontend
-  downloads/       ← your mp3s live here (auto-created)
+
+Set `PODIFY_ADMIN_TOKEN` before using the admin API locally. Admin routes stay disabled until that token is configured.
+`PODIFY_EXPOSE_DEMO_VERIFICATION` is disabled by default. Leave it off for secure behavior; only turn it on for local demo testing.
+
+## Access Control
+
+Podify's public landing page and DMCA flow stay visible, but the service itself is not open access anymore:
+
+- `POST /register` starts the access flow for a given email.
+- `GET /register/verify?token=...` verifies ownership of that email and issues an HTTP-only access cookie.
+- `GET /search`, `GET /playback/{video_id}`, and all `/library` routes require a verified user with `active` status.
+- Waitlisted users can verify their email, but they still cannot use the service until promoted to `active`.
+- `POST /session/logout` clears the browser session cookie and invalidates the stored session token.
+
+## Private Files And `.gitignore`
+
+The ignore rules keep these local-only by default:
+
+- `data/` runtime state
+- `downloads/` scratch files
+- `.env` files
+- `podify/local_settings.py`
+- temporary test artifacts such as `podify-request-*` and `podify-search-*`
+
+## Security Defaults
+
+- Admin routes are disabled until `PODIFY_ADMIN_TOKEN` is explicitly configured.
+- Registration verification tokens are hashed in state and hidden from API responses by default.
+- Browser access sessions are stored as hashed, server-validated tokens and issued only after email verification.
+- Direct URL lookups only accept YouTube URLs.
+- Library, playback, thumbnail, and watch URLs are derived from validated YouTube video IDs instead of trusting client-supplied URLs.
+- Security headers are added to responses to reduce framing, sniffing, and cross-origin policy risks.
+- Basic per-IP rate limiting is applied to search, playback, registration, DMCA, and admin endpoints to reduce brute-force and abuse.
+
+Important: `.gitignore` prevents accidental commits. It does **not** prevent copying of code that is already committed and public. If you need real protection, use a private repository and an explicit license.
+
+## Railway Notes
+
+- `main.py` remains the stable ASGI entrypoint, so existing `main:app` deployment commands keep working.
+- `nixpacks.toml` keeps `ffmpeg` available for platforms that rely on Nixpacks.
+- Keep secrets in Railway environment variables instead of committed files.
+
+## Tests
+
+```powershell
+python -m unittest test_search.py test_request.py
 ```
+
+## Operator Note
+
+The repository includes implementation hooks for attribution, DMCA handling, user caps, and registration gating, but legal compliance is still an operator responsibility. This README is project documentation, not legal advice.
