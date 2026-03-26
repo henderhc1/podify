@@ -7,6 +7,7 @@ from unittest.mock import patch
 from fastapi import HTTPException
 
 import main
+from podify.config import clear_ytdlp_runtime_cookie_file, save_ytdlp_runtime_cookie_text
 from podify.services import videos as video_services
 
 
@@ -111,12 +112,16 @@ class SearchTests(unittest.TestCase):
         os.close(fd)
         os.environ["PODIFY_STATE_PATH"] = self.state_path
         main.save_state(main.clone_default_state())
+        clear_ytdlp_runtime_cookie_file()
         with video_services.PLAYBACK_CACHE_LOCK:
             video_services.PLAYBACK_CACHE.clear()
 
     def tearDown(self):
         os.environ.pop("PODIFY_STATE_PATH", None)
         os.environ.pop("PODIFY_YTDLP_COOKIES_FROM_BROWSER", None)
+        os.environ.pop("PODIFY_YTDLP_COOKIE_FILE", None)
+        os.environ.pop("PODIFY_YTDLP_COOKIE_TEXT", None)
+        clear_ytdlp_runtime_cookie_file()
         if os.path.exists(self.state_path):
             os.remove(self.state_path)
 
@@ -171,6 +176,22 @@ class SearchTests(unittest.TestCase):
         self.assertEqual(
             FlatSearchYoutubeDL.last_options["cookiesfrombrowser"],
             ("chrome", "Default", None, None),
+        )
+
+    @patch("main.yt_dlp.YoutubeDL", FlatSearchYoutubeDL)
+    def test_search_supports_runtime_cookie_file_configuration(self):
+        save_ytdlp_runtime_cookie_text(
+            "# Netscape HTTP Cookie File\n.youtube.com\tTRUE\t/\tTRUE\t2147483647\tSID\tabc123\n"
+        )
+
+        results = asyncio.run(main.search("hello"))
+
+        self.assertEqual(len(results), 1)
+        self.assertIn("cookiefile", FlatSearchYoutubeDL.last_options)
+        self.assertTrue(
+            str(FlatSearchYoutubeDL.last_options["cookiefile"]).endswith(
+                "yt-dlp-cookies.runtime.txt"
+            )
         )
 
     @patch("main.yt_dlp.YoutubeDL", BotCheckYoutubeDL)

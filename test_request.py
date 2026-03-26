@@ -10,6 +10,7 @@ from starlette.requests import Request
 
 import main
 from podify.auth import ACCESS_SESSION_COOKIE, require_active_user, require_admin
+from podify.services import videos as video_services
 from test_search import FakeYoutubeDL
 
 
@@ -68,6 +69,9 @@ class RequestFlowTests(unittest.TestCase):
         os.environ["PODIFY_STATE_PATH"] = self.state_path
         os.environ["PODIFY_MAX_ACTIVE_USERS"] = "1"
         main.save_state(main.clone_default_state())
+        main.clear_ytdlp_runtime_cookie_file()
+        with video_services.PLAYBACK_CACHE_LOCK:
+            video_services.PLAYBACK_CACHE.clear()
 
     def tearDown(self):
         os.environ.pop("PODIFY_STATE_PATH", None)
@@ -76,6 +80,10 @@ class RequestFlowTests(unittest.TestCase):
         os.environ.pop("PODIFY_MAX_ACTIVE_USERS", None)
         os.environ.pop("PODIFY_REQUIRE_EMAIL_VERIFICATION", None)
         os.environ.pop("PODIFY_EXPOSE_DEMO_VERIFICATION", None)
+        os.environ.pop("PODIFY_YTDLP_COOKIE_FILE", None)
+        os.environ.pop("PODIFY_YTDLP_COOKIE_TEXT", None)
+        os.environ.pop("PODIFY_YTDLP_COOKIES_FROM_BROWSER", None)
+        main.clear_ytdlp_runtime_cookie_file()
         if os.path.exists(self.state_path):
             os.remove(self.state_path)
 
@@ -242,6 +250,42 @@ class RequestFlowTests(unittest.TestCase):
         self.assertFalse(user.get("email_verified"))
         self.assertIsNone(user.get("verification_token"))
         self.assertTrue(user.get("verification_token_hash"))
+
+    def test_admin_can_save_and_clear_runtime_ytdlp_cookies(self):
+        cookie_text = (
+            "# Netscape HTTP Cookie File\n"
+            ".youtube.com\tTRUE\t/\tTRUE\t2147483647\tSID\tabc123\n"
+        )
+
+        status_before = asyncio.run(main.get_admin_ytdlp_cookie_status())
+        self.assertEqual(status_before["active_source"], "none")
+        self.assertFalse(status_before["runtime_cookie_present"])
+
+        with video_services.PLAYBACK_CACHE_LOCK:
+            video_services.PLAYBACK_CACHE["videoidx000"] = {
+                "expires_at": 9999999999,
+                "payload": {"video_id": "videoidx000"},
+            }
+
+        saved = asyncio.run(main.admin_set_ytdlp_cookies({"cookie_text": cookie_text}))
+        self.assertEqual(saved["status"], "saved")
+        self.assertEqual(saved["active_source"], "runtime_file")
+        self.assertTrue(saved["runtime_cookie_present"])
+        self.assertGreaterEqual(saved["cleared_cache_entries"], 1)
+        self.assertEqual(saved["active_cookie_file"], main.get_ytdlp_cookie_file())
+        self.assertTrue(os.path.exists(saved["runtime_cookie_file"]))
+
+        cleared = asyncio.run(main.admin_clear_ytdlp_cookies())
+        self.assertEqual(cleared["status"], "cleared")
+        self.assertEqual(cleared["active_source"], "none")
+        self.assertFalse(cleared["runtime_cookie_present"])
+        self.assertFalse(os.path.exists(cleared["runtime_cookie_file"]))
+
+    def test_admin_rejects_invalid_runtime_cookie_text(self):
+        with self.assertRaises(HTTPException) as invalid:
+            asyncio.run(main.admin_set_ytdlp_cookies({"cookie_text": "not-a-cookie-file"}))
+
+        self.assertEqual(invalid.exception.status_code, 422)
 
 
 if __name__ == "__main__":

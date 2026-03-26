@@ -5,7 +5,12 @@ from typing import Any
 from fastapi import APIRouter, Body, Depends, HTTPException
 
 from podify.auth import clear_access_session, issue_verification_token, require_admin
-from podify.config import get_max_active_users
+from podify.config import (
+    clear_ytdlp_runtime_cookie_file,
+    get_max_active_users,
+    get_ytdlp_cookie_status,
+    save_ytdlp_runtime_cookie_text,
+)
 from podify.services.users import (
     active_user_count,
     ensure_not_blocked_email,
@@ -14,7 +19,7 @@ from podify.services.users import (
     sort_users,
     validate_email,
 )
-from podify.services.videos import block_video_in_state, extract_video_id
+from podify.services.videos import block_video_in_state, clear_playback_cache, extract_video_id
 from podify.state import STATE_LOCK, load_state, load_state_unlocked, save_state_unlocked, utc_now
 
 router = APIRouter()
@@ -50,6 +55,40 @@ async def get_admin_blocked_emails() -> list[str]:
 async def get_admin_dmca_notices() -> list[dict[str, Any]]:
     state = load_state()
     return state["dmca_notices"]
+
+
+@router.get("/admin/ytdlp/cookies", dependencies=[Depends(require_admin)])
+async def get_admin_ytdlp_cookie_status() -> dict[str, Any]:
+    return get_ytdlp_cookie_status()
+
+
+@router.post("/admin/ytdlp/cookies", dependencies=[Depends(require_admin)])
+async def admin_set_ytdlp_cookies(payload: dict[str, Any] = Body(...)) -> dict[str, Any]:
+    cookie_text = str(payload.get("cookie_text") or "")
+    try:
+        cookie_file = save_ytdlp_runtime_cookie_text(cookie_text)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    cleared_cache_entries = clear_playback_cache()
+    return {
+        "status": "saved",
+        "cookie_file": cookie_file,
+        "cleared_cache_entries": cleared_cache_entries,
+        **get_ytdlp_cookie_status(),
+    }
+
+
+@router.delete("/admin/ytdlp/cookies", dependencies=[Depends(require_admin)])
+async def admin_clear_ytdlp_cookies() -> dict[str, Any]:
+    removed = clear_ytdlp_runtime_cookie_file()
+    cleared_cache_entries = clear_playback_cache()
+    return {
+        "status": "cleared",
+        "removed": removed,
+        "cleared_cache_entries": cleared_cache_entries,
+        **get_ytdlp_cookie_status(),
+    }
 
 
 @router.post("/admin/users", dependencies=[Depends(require_admin)])

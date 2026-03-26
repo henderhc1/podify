@@ -14,6 +14,8 @@ STATIC_DIR = ROOT_DIR / "static"
 DATA_DIR = ROOT_DIR / "data"
 DOWNLOADS_DIR = ROOT_DIR / "downloads"
 SEARCH_TIMEOUT_SECONDS = 20
+YTDLP_ENV_COOKIE_FILE = DATA_DIR / "yt-dlp-cookies.txt"
+YTDLP_RUNTIME_COOKIE_FILE = DATA_DIR / "yt-dlp-cookies.runtime.txt"
 
 DISCLAIMER_COPY = {
     "public_message": (
@@ -98,7 +100,40 @@ def get_admin_token() -> str:
     ).strip()
 
 
-def get_ytdlp_cookie_file() -> str | None:
+def _write_text_if_changed(path: Path, content: str) -> str:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if path.exists():
+        try:
+            existing = path.read_text(encoding="utf-8")
+            if existing == content:
+                return str(path)
+        except OSError:
+            pass
+    path.write_text(content, encoding="utf-8")
+    return str(path)
+
+
+def _normalize_cookie_text(content: str) -> str:
+    return f"{str(content or '').replace('\r\n', '\n').strip()}\n"
+
+
+def _validate_runtime_cookie_text(cookie_text: str) -> str:
+    normalized = _normalize_cookie_text(cookie_text).strip()
+    if not normalized:
+        raise ValueError("Cookie text is required.")
+
+    lines = [line for line in normalized.split("\n") if line.strip()]
+    data_lines = [line for line in lines if not line.lstrip().startswith("#")]
+    if not data_lines:
+        raise ValueError("Cookie text must include at least one cookie row.")
+
+    if not any(len(line.split("\t")) >= 7 for line in data_lines):
+        raise ValueError("Cookie text must be in Netscape cookies.txt format.")
+
+    return f"{normalized}\n"
+
+
+def _resolve_ytdlp_env_cookie_file() -> str | None:
     direct_path = get_setting("PODIFY_YTDLP_COOKIE_FILE") or get_setting("PODIFY_YTDLP_COOKIEFILE")
     if direct_path:
         return direct_path
@@ -106,12 +141,34 @@ def get_ytdlp_cookie_file() -> str | None:
     cookie_text = get_setting("PODIFY_YTDLP_COOKIE_TEXT") or get_setting("PODIFY_YTDLP_COOKIES")
     if not cookie_text:
         return None
+    return _write_text_if_changed(YTDLP_ENV_COOKIE_FILE, _normalize_cookie_text(cookie_text))
 
-    DATA_DIR.mkdir(parents=True, exist_ok=True)
-    cookie_path = DATA_DIR / "yt-dlp-cookies.txt"
-    content = str(cookie_text).replace("\r\n", "\n").strip()
-    cookie_path.write_text(f"{content}\n", encoding="utf-8")
-    return str(cookie_path)
+
+def get_ytdlp_runtime_cookie_file_path() -> Path:
+    return YTDLP_RUNTIME_COOKIE_FILE
+
+
+def save_ytdlp_runtime_cookie_text(cookie_text: str) -> str:
+    return _write_text_if_changed(YTDLP_RUNTIME_COOKIE_FILE, _validate_runtime_cookie_text(cookie_text))
+
+
+def clear_ytdlp_runtime_cookie_file() -> bool:
+    runtime_path = get_ytdlp_runtime_cookie_file_path()
+    if not runtime_path.exists():
+        return False
+    runtime_path.unlink()
+    return True
+
+
+def get_ytdlp_cookie_file() -> str | None:
+    env_cookie_file = _resolve_ytdlp_env_cookie_file()
+    if env_cookie_file:
+        return env_cookie_file
+
+    runtime_path = get_ytdlp_runtime_cookie_file_path()
+    if runtime_path.exists():
+        return str(runtime_path)
+    return None
 
 
 def get_ytdlp_cookies_from_browser() -> tuple[str, str | None, str | None, str | None] | None:
@@ -135,6 +192,48 @@ def get_ytdlp_cookies_from_browser() -> tuple[str, str | None, str | None, str |
     keyring = str(match.group("keyring") or "").strip().upper() or None
     container = str(match.group("container") or "").strip() or None
     return (browser_name, profile, keyring, container)
+
+
+def _format_browser_cookie_source(
+    browser: tuple[str, str | None, str | None, str | None],
+) -> str:
+    browser_name, profile, keyring, container = browser
+    value = browser_name
+    if keyring:
+        value = f"{value}+{keyring}"
+    if profile:
+        value = f"{value}:{profile}"
+    if container:
+        value = f"{value}::{container}"
+    return value
+
+
+def get_ytdlp_cookie_status() -> dict[str, Any]:
+    runtime_path = get_ytdlp_runtime_cookie_file_path()
+    env_direct_path = get_setting("PODIFY_YTDLP_COOKIE_FILE") or get_setting("PODIFY_YTDLP_COOKIEFILE")
+    env_cookie_text = get_setting("PODIFY_YTDLP_COOKIE_TEXT") or get_setting("PODIFY_YTDLP_COOKIES")
+    browser_cookies = get_ytdlp_cookies_from_browser()
+    active_cookie_file = get_ytdlp_cookie_file()
+
+    if env_direct_path:
+        active_source = "env_file"
+    elif env_cookie_text:
+        active_source = "env_text"
+    elif runtime_path.exists():
+        active_source = "runtime_file"
+    elif browser_cookies:
+        active_source = "browser"
+    else:
+        active_source = "none"
+
+    return {
+        "configured": active_source != "none",
+        "active_source": active_source,
+        "active_cookie_file": active_cookie_file,
+        "active_browser": _format_browser_cookie_source(browser_cookies) if browser_cookies else "",
+        "runtime_cookie_file": str(runtime_path),
+        "runtime_cookie_present": runtime_path.exists(),
+    }
 
 
 def is_email_verification_required() -> bool:

@@ -356,6 +356,13 @@ def cache_playback_info(
     return dict(cached_payload)
 
 
+def clear_playback_cache() -> int:
+    with PLAYBACK_CACHE_LOCK:
+        count = len(PLAYBACK_CACHE)
+        PLAYBACK_CACHE.clear()
+    return count
+
+
 def build_ydl_options(*, flat_search: bool = False) -> dict[str, Any]:
     options: dict[str, Any] = {
         "quiet": True,

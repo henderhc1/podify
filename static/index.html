@@ -332,6 +332,25 @@
           </div>
           <hr>
           <div class="split">
+            <form id="admin-cookie-form" class="list">
+              <h3>YouTube auth cookies</h3>
+              <div class="soft">Paste Netscape cookies.txt content from an authenticated YouTube session to restore server-side previews.</div>
+              <textarea id="admin-cookie-text" placeholder="# Netscape HTTP Cookie File"></textarea>
+              <div class="actions" style="margin-top:0">
+                <button class="btn primary" type="submit">Save cookies</button>
+                <button class="btn ghost" id="admin-cookie-clear" type="button">Clear cookies</button>
+              </div>
+              <div class="banner info" id="admin-cookie-banner"></div>
+            </form>
+            <div class="list">
+              <h3>Cookie status</h3>
+              <input id="admin-cookie-source" type="text" readonly placeholder="No cookie source configured.">
+              <div class="soft" id="admin-cookie-status">No cookie source configured.</div>
+              <div class="soft" id="admin-cookie-runtime"></div>
+            </div>
+          </div>
+          <hr>
+          <div class="split">
             <div>
               <h3>Users</h3>
               <div class="list" id="admin-users" style="margin-top:1rem"><div class="empty">Connect with a valid admin password to load users.</div></div>
@@ -903,6 +922,30 @@
       $('admin-notices').innerHTML = notices.length ? notices.map((n) => `<div class="item"><div><strong>${esc(n.reporter_name)}</strong><span>${esc(n.video_url)}</span></div><span class="tag">${esc(n.id)}</span></div>`).join('') : '<div class="empty">No notices yet.</div>';
     }
 
+    function adminCookieSourceLabel(source) {
+      if (source === 'env_file') return 'Environment cookie file';
+      if (source === 'env_text') return 'Environment cookie text';
+      if (source === 'runtime_file') return 'Admin-managed cookie file';
+      if (source === 'browser') return 'Browser cookie profile';
+      return 'Not configured';
+    }
+
+    function adminCookieStatus(status) {
+      const source = status && status.active_source ? status.active_source : 'none';
+      $('admin-cookie-source').value = adminCookieSourceLabel(source);
+      if (status && status.active_cookie_file) {
+        $('admin-cookie-status').textContent = `Active cookie file: ${status.active_cookie_file}`;
+      } else if (status && status.active_browser) {
+        $('admin-cookie-status').textContent = `Active browser profile: ${status.active_browser}`;
+      } else {
+        $('admin-cookie-status').textContent = 'No active cookie source. Preview lookups will likely fail on hosted server IPs.';
+      }
+
+      $('admin-cookie-runtime').textContent = status && status.runtime_cookie_present
+        ? `Managed runtime file is present at ${status.runtime_cookie_file}.`
+        : 'No managed runtime cookie file stored.';
+    }
+
     function setAdminAccessLink(link = '', email = '') {
       latestAdminAccessLink = link;
       $('admin-access-link-output').value = link;
@@ -919,11 +962,12 @@
     }
 
     async function refreshAdmin() {
-      const [summary, users, blockedEmails, notices] = await Promise.all([
+      const [summary, users, blockedEmails, notices, cookieStatus] = await Promise.all([
         adminReq('/admin/summary'),
         adminReq('/admin/users'),
         adminReq('/admin/blocked-emails'),
-        adminReq('/admin/dmca/notices')
+        adminReq('/admin/dmca/notices'),
+        adminReq('/admin/ytdlp/cookies')
       ]);
       $('admin-panel').style.display = 'block';
       if (!latestAdminAccessLink) setAdminAccessLink();
@@ -931,6 +975,7 @@
       adminUsers(users);
       adminBlocked(blockedEmails);
       adminNotices(notices);
+      adminCookieStatus(cookieStatus);
     }
 
     $('admin-connect').addEventListener('submit', async (e) => {
@@ -968,6 +1013,34 @@
         e.target.reset();
       } catch (err) {
         banner('admin-access-link-banner', err.message, 'error');
+      }
+    });
+    $('admin-cookie-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      banner('admin-cookie-banner');
+      const cookieText = $('admin-cookie-text').value.trim();
+      if (!cookieText) return banner('admin-cookie-banner', 'Paste Netscape cookies.txt content before saving.', 'error');
+      try {
+        const r = await adminReq('/admin/ytdlp/cookies', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ cookie_text: cookieText })
+        });
+        adminCookieStatus(r);
+        $('admin-cookie-text').value = '';
+        banner('admin-cookie-banner', `Cookies saved. Cleared ${r.cleared_cache_entries || 0} cached preview entries.`);
+      } catch (err) {
+        banner('admin-cookie-banner', err.message, 'error');
+      }
+    });
+    $('admin-cookie-clear').addEventListener('click', async () => {
+      banner('admin-cookie-banner');
+      try {
+        const r = await adminReq('/admin/ytdlp/cookies', { method: 'DELETE' });
+        adminCookieStatus(r);
+        banner('admin-cookie-banner', `Managed cookies cleared. Cleared ${r.cleared_cache_entries || 0} cached preview entries.`);
+      } catch (err) {
+        banner('admin-cookie-banner', err.message, 'error');
       }
     });
     $('admin-block-email-form').addEventListener('submit', async (e) => { e.preventDefault(); await adminPost('/admin/users/block', { email: $('admin-block-email').value.trim() }, 'Email blocked.'); e.target.reset(); });
