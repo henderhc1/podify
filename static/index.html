@@ -73,8 +73,10 @@
     .count{padding:.45rem .8rem;border-radius:999px;background:#1f6f5f12;color:var(--green2);font-weight:700}
     .split{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
     .quad{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.75rem}
-    .mini-card{padding:1rem;border-radius:18px;background:#ffffff92;border:1px solid var(--line)}
-    .mini-card strong{display:block;font-size:1.45rem;margin-top:.25rem}
+    .access-quad{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .mini-card{padding:1rem;border-radius:18px;background:#ffffff92;border:1px solid var(--line);min-width:0}
+    .mini-card span{display:block;overflow-wrap:anywhere}
+    .mini-card strong{display:block;font-size:1.45rem;margin-top:.25rem;overflow-wrap:anywhere}
     .item{display:flex;justify-content:space-between;align-items:center;gap:.8rem;padding:.9rem 1rem;border-radius:18px;background:#ffffff8c;border:1px solid var(--line)}
     .item > div{min-width:0}
     .item strong,.item span{overflow-wrap:anywhere}
@@ -210,7 +212,7 @@
           <h3>Registration disclaimer</h3>
           <p id="registration-disclaimer">By registering, you agree to use Podify only for discovery and preview purposes. Support creators by watching full content on YouTube.</p>
           <hr>
-          <div class="quad">
+          <div class="quad access-quad">
             <div class="mini-card"><span>Active users</span><strong id="active-users">0</strong></div>
             <div class="mini-card"><span>User cap</span><strong id="max-users">1000</strong></div>
             <div class="mini-card"><span>Registration</span><strong id="open-state">Open</strong></div>
@@ -260,11 +262,11 @@
           <div class="head">
             <div>
               <h3>Admin access</h3>
-              <div class="soft">Use the admin token to manage users, email blocks, and preview blocks.</div>
+              <div class="soft">Enter the admin password configured on the server to manage users, email blocks, and preview blocks.</div>
             </div>
           </div>
           <form class="row" id="admin-connect">
-            <input class="grow" id="admin-token" type="password" placeholder="Enter admin token">
+            <input class="grow" id="admin-token" type="password" placeholder="Enter admin password" aria-label="Admin password">
             <button class="btn primary" type="submit">Connect</button>
           </form>
           <div class="banner info" id="admin-banner"></div>
@@ -329,7 +331,7 @@
           <div class="split">
             <div>
               <h3>Users</h3>
-              <div class="list" id="admin-users" style="margin-top:1rem"><div class="empty">Connect with a valid admin token to load users.</div></div>
+              <div class="list" id="admin-users" style="margin-top:1rem"><div class="empty">Connect with a valid admin password to load users.</div></div>
             </div>
             <div class="list">
               <div>
@@ -394,15 +396,26 @@
     const esc = (v) => String(v ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
     const banner = (id, msg = '', tone = 'info') => { const el = $(id); el.textContent = msg; el.className = msg ? `banner show ${tone}` : 'banner info'; };
     const req = async (path, opts = {}) => {
-      const r = await fetch(API + path, { credentials: 'same-origin', ...opts });
-      const d = await r.json().catch(() => ({}));
-      if (!r.ok) {
-        const err = new Error(d.detail || 'Request failed.');
-        err.status = r.status;
-        err.detail = d.detail || '';
-        throw err;
+      try {
+        const r = await fetch(API + path, { credentials: 'same-origin', ...opts });
+        const contentType = r.headers.get('content-type') || '';
+        const isJson = contentType.includes('application/json');
+        const data = isJson ? await r.json().catch(() => ({})) : {};
+        const rawText = isJson ? '' : await r.text().catch(() => '');
+
+        if (!r.ok) {
+          const detail = data.detail || rawText.trim() || `${r.status} ${r.statusText}` || 'Request failed.';
+          const err = new Error(detail);
+          err.status = r.status;
+          err.detail = detail;
+          throw err;
+        }
+
+        return isJson ? data : rawText;
+      } catch (err) {
+        if (err && typeof err.status === 'number') throw err;
+        throw new Error(err && err.message ? err.message : 'Network request failed.');
       }
-      return d;
     };
 
     async function activateTab(tabName) {
@@ -843,10 +856,10 @@
       e.preventDefault();
       banner('admin-banner');
       adminToken = $('admin-token').value.trim();
-      if (!adminToken) return banner('admin-banner', 'Enter the admin token first.', 'error');
+      if (!adminToken) return banner('admin-banner', 'Enter the admin password first.', 'error');
       try {
         await refreshAdmin();
-        banner('admin-banner', 'Admin token accepted.');
+        banner('admin-banner', 'Admin password accepted.');
       } catch (err) {
         $('admin-panel').style.display = 'none';
         banner('admin-banner', err.message, 'error');
