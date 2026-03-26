@@ -55,6 +55,7 @@ $env:PODIFY_MAX_ACTIVE_USERS="1000"
 $env:PODIFY_ADMIN_TOKEN="replace-me"
 $env:PODIFY_REQUIRE_EMAIL_VERIFICATION="0"
 $env:PODIFY_EXPOSE_DEMO_VERIFICATION="0"
+$env:PODIFY_YTDLP_COOKIE_FILE="data/yt-dlp-cookies.txt"
 $env:PODIFY_DMCA_AGENT_NAME="Your DMCA Agent"
 $env:PODIFY_DMCA_AGENT_EMAIL="dmca@example.com"
 $env:PODIFY_DMCA_RESPONSE_WINDOW_HOURS="48"
@@ -64,6 +65,7 @@ $env:PODIFY_STATE_PATH="data/state.json"
 Set `PODIFY_ADMIN_TOKEN` before using the admin API locally. Admin routes stay disabled until that token is configured.
 `PODIFY_REQUIRE_EMAIL_VERIFICATION` is disabled by default right now, so valid emails can sign up immediately. Turn it on later when a real outbound email flow is ready.
 `PODIFY_EXPOSE_DEMO_VERIFICATION` only matters when email verification is enabled. Leave it off for secure behavior; only turn it on for local demo testing.
+`PODIFY_YTDLP_COOKIE_FILE` or `PODIFY_YTDLP_COOKIE_TEXT` is optional, but Railway operators should expect to need it when YouTube starts returning "Sign in to confirm you're not a bot" to the server IP.
 
 ## Access Control
 
@@ -112,6 +114,8 @@ Important: `.gitignore` prevents accidental commits. It does **not** prevent cop
 - `main.py` remains the stable ASGI entrypoint, so existing `main:app` deployment commands keep working.
 - `nixpacks.toml` keeps `ffmpeg` available for platforms that rely on Nixpacks.
 - Keep secrets in Railway environment variables instead of committed files.
+- Search uses flat `yt-dlp` query extraction to reduce per-result lookups and improve load time.
+- If Railway logs show `Sign in to confirm you're not a bot`, configure `PODIFY_YTDLP_COOKIE_FILE` or a multiline `PODIFY_YTDLP_COOKIE_TEXT` secret with authenticated YouTube cookies so `yt-dlp` can search from the server.
 
 ## Tests
 

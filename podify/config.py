@@ -89,6 +89,22 @@ def get_admin_token() -> str:
     ).strip()
 
 
+def get_ytdlp_cookie_file() -> str | None:
+    direct_path = get_setting("PODIFY_YTDLP_COOKIE_FILE") or get_setting("PODIFY_YTDLP_COOKIEFILE")
+    if direct_path:
+        return direct_path
+
+    cookie_text = get_setting("PODIFY_YTDLP_COOKIE_TEXT") or get_setting("PODIFY_YTDLP_COOKIES")
+    if not cookie_text:
+        return None
+
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    cookie_path = DATA_DIR / "yt-dlp-cookies.txt"
+    content = str(cookie_text).replace("\r\n", "\n").strip()
+    cookie_path.write_text(f"{content}\n", encoding="utf-8")
+    return str(cookie_path)
+
+
 def is_email_verification_required() -> bool:
     return get_bool_setting("PODIFY_REQUIRE_EMAIL_VERIFICATION", default=False)
 

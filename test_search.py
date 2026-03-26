@@ -72,6 +72,38 @@ class FakeYoutubeDL:
         raise AssertionError(f"Unexpected query: {query}")
 
 
+class FlatSearchYoutubeDL(FakeYoutubeDL):
+    last_options = None
+
+    def __init__(self, options):
+        super().__init__(options)
+        type(self).last_options = options
+
+    def extract_info(self, query, download=False):
+        if query.startswith("ytsearch10:"):
+            if not self.options.get("extract_flat"):
+                raise RuntimeError("Sign in to confirm you're not a bot")
+            return {
+                "entries": [
+                    {
+                        "id": "videoidx111",
+                        "title": "Flat result",
+                        "channel": "Flat Channel",
+                        "duration": 187,
+                        "url": "https://www.youtube.com/watch?v=videoidx111",
+                    }
+                ]
+            }
+        return super().extract_info(query, download=download)
+
+
+class BotCheckYoutubeDL(FakeYoutubeDL):
+    def extract_info(self, query, download=False):
+        raise RuntimeError(
+            "Sign in to confirm you're not a bot. Use --cookies-from-browser or --cookies."
+        )
+
+
 class SearchTests(unittest.TestCase):
     def setUp(self):
         fd, self.state_path = tempfile.mkstemp(prefix="podify-search-", suffix=".json")
@@ -114,6 +146,24 @@ class SearchTests(unittest.TestCase):
             asyncio.run(main.search("https://example.com/watch?v=videoidx000"))
 
         self.assertEqual(invalid_url.exception.status_code, 422)
+
+    @patch("main.yt_dlp.YoutubeDL", FlatSearchYoutubeDL)
+    def test_search_uses_flat_yt_dlp_results_for_query_searches(self):
+        results = asyncio.run(main.search("hello"))
+
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]["video_id"], "videoidx111")
+        self.assertEqual(results[0]["duration"], "3:07")
+        self.assertEqual(FlatSearchYoutubeDL.last_options["extract_flat"], "in_playlist")
+        self.assertTrue(FlatSearchYoutubeDL.last_options["lazy_playlist"])
+
+    @patch("main.yt_dlp.YoutubeDL", BotCheckYoutubeDL)
+    def test_search_returns_operator_guidance_on_youtube_bot_check(self):
+        with self.assertRaises(HTTPException) as blocked:
+            asyncio.run(main.search("hello"))
+
+        self.assertEqual(blocked.exception.status_code, 503)
+        self.assertIn("PODIFY_YTDLP_COOKIE_FILE", blocked.exception.detail)
 
     @patch("main.yt_dlp.YoutubeDL", FakeYoutubeDL)
     def test_playback_resolves_best_browser_stream(self):

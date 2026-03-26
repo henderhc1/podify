@@ -10,7 +10,7 @@ from urllib.parse import parse_qs, urlparse
 import yt_dlp
 from fastapi import HTTPException
 
-from podify.config import SEARCH_TIMEOUT_SECONDS
+from podify.config import SEARCH_TIMEOUT_SECONDS, get_ytdlp_cookie_file
 from podify.state import utc_now
 
 YOUTUBE_ID_RE = re.compile(
@@ -29,6 +29,10 @@ ALLOWED_YOUTUBE_HOSTS = {
 PLAYBACK_CACHE_TTL_SECONDS = 300
 PLAYBACK_CACHE: dict[str, dict[str, Any]] = {}
 PLAYBACK_CACHE_LOCK = Lock()
+YTDLP_BOT_CHECK_MARKERS = (
+    "sign in to confirm you're not a bot",
+    "use --cookies-from-browser or --cookies",
+)
 
 
 def normalize_candidate_url(candidate: str) -> str:
@@ -175,15 +179,28 @@ def normalize_video_record(payload: dict[str, Any]) -> dict[str, Any]:
 
 
 def build_search_result(entry: dict[str, Any]) -> dict[str, Any] | None:
-    video_id = entry.get("id") or extract_video_id(entry.get("webpage_url", ""))
+    video_id = (
+        entry.get("id")
+        or extract_video_id(entry.get("webpage_url", ""))
+        or extract_video_id(entry.get("url", ""))
+    )
     if not video_id:
         return None
+
+    raw_duration = entry.get("duration")
+    live_status = str(entry.get("live_status") or "").lower()
+    if isinstance(raw_duration, (int, float)) and raw_duration > 0:
+        duration = format_duration(raw_duration)
+    elif live_status in {"is_live", "was_live"}:
+        duration = "Live"
+    else:
+        duration = str(entry.get("duration_string") or "").strip() or "Unknown"
 
     return {
         "video_id": video_id,
         "title": str(entry.get("title") or "Untitled video").strip(),
         "channel": str(entry.get("uploader") or entry.get("channel") or "Unknown creator").strip(),
-        "duration": format_duration(entry.get("duration")),
+        "duration": duration,
         "thumbnail_url": f"https://i.ytimg.com/vi/{video_id}/hqdefault.jpg",
         "video_url": canonical_watch_url(video_id),
         "playback_url": build_playback_api_url(video_id),
@@ -318,22 +335,14 @@ def cache_playback_info(video_id: str, payload: dict[str, Any]) -> dict[str, Any
     return dict(cached_payload)
 
 
-def resolve_playback_info(video_id_or_url: str) -> dict[str, Any]:
-    video_id = extract_video_id(video_id_or_url)
-    if not video_id:
-        raise HTTPException(status_code=422, detail="A valid YouTube video URL or ID is required.")
-
-    cached = get_cached_playback_info(video_id)
-    if cached:
-        return cached
-
-    ydl_opts = {
+def build_ydl_options(*, flat_search: bool = False) -> dict[str, Any]:
+    options: dict[str, Any] = {
         "quiet": True,
         "no_warnings": True,
         "skip_download": True,
         "noplaylist": True,
         "geo_bypass": True,
-        "extract_flat": False,
+        "extract_flat": "in_playlist" if flat_search else False,
         "user_agent": (
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
             "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
@@ -345,6 +354,43 @@ def resolve_playback_info(video_id_or_url: str) -> dict[str, Any]:
             )
         },
     }
+    if flat_search:
+        options["lazy_playlist"] = True
+
+    cookie_file = get_ytdlp_cookie_file()
+    if cookie_file:
+        options["cookiefile"] = cookie_file
+    return options
+
+
+def is_ytdlp_bot_check_error(exc: Exception) -> bool:
+    message = str(exc or "").lower()
+    return any(marker in message for marker in YTDLP_BOT_CHECK_MARKERS)
+
+
+def ytdlp_operator_guidance(context: str) -> str:
+    if get_ytdlp_cookie_file():
+        return (
+            f"{context} YouTube is still challenging this server even with cookies configured. "
+            "Refresh the yt-dlp cookies and try again."
+        )
+    return (
+        f"{context} YouTube is challenging this server IP. Configure "
+        "PODIFY_YTDLP_COOKIE_FILE or PODIFY_YTDLP_COOKIE_TEXT so yt-dlp can use authenticated "
+        "YouTube cookies on the server."
+    )
+
+
+def resolve_playback_info(video_id_or_url: str) -> dict[str, Any]:
+    video_id = extract_video_id(video_id_or_url)
+    if not video_id:
+        raise HTTPException(status_code=422, detail="A valid YouTube video URL or ID is required.")
+
+    cached = get_cached_playback_info(video_id)
+    if cached:
+        return cached
+
+    ydl_opts = build_ydl_options(flat_search=False)
 
     def run_lookup() -> dict[str, Any]:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -359,6 +405,11 @@ def resolve_playback_info(video_id_or_url: str) -> dict[str, Any]:
     except HTTPException:
         raise
     except Exception as exc:
+        if is_ytdlp_bot_check_error(exc):
+            raise HTTPException(
+                status_code=503,
+                detail=ytdlp_operator_guidance("Preview lookup is temporarily unavailable."),
+            ) from exc
         raise HTTPException(
             status_code=500,
             detail="Playback lookup failed. Please try another video or use Watch on YouTube.",
@@ -398,28 +449,13 @@ def search_youtube(query: str, blocked_ids: set[str] | None = None) -> list[dict
         raise HTTPException(status_code=422, detail="Search queries must be 200 characters or fewer.")
 
     ignored_ids = blocked_ids or set()
-    ydl_opts = {
-        "quiet": True,
-        "no_warnings": True,
-        "skip_download": True,
-        "noplaylist": True,
-        "default_search": "ytsearch",
-        "geo_bypass": True,
-        "user_agent": (
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-            "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
-        ),
-        "http_headers": {
-            "User-Agent": (
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
-            )
-        },
-    }
+    is_direct_url = cleaned_query.startswith("http://") or cleaned_query.startswith("https://")
+    ydl_opts = build_ydl_options(flat_search=not is_direct_url)
+    ydl_opts["default_search"] = "ytsearch"
 
     def run_lookup() -> list[dict[str, Any]]:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            if cleaned_query.startswith("http://") or cleaned_query.startswith("https://"):
+            if is_direct_url:
                 if not is_allowed_youtube_url(cleaned_query):
                     raise HTTPException(
                         status_code=422,
@@ -443,6 +479,11 @@ def search_youtube(query: str, blocked_ids: set[str] | None = None) -> list[dict
     except HTTPException:
         raise
     except Exception as exc:
+        if is_ytdlp_bot_check_error(exc):
+            raise HTTPException(
+                status_code=503,
+                detail=ytdlp_operator_guidance("Search is temporarily unavailable."),
+            ) from exc
         raise HTTPException(status_code=500, detail="Search failed. Please try again.") from exc
 
     results: list[dict[str, Any]] = []
