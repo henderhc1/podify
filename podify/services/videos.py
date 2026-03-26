@@ -12,6 +12,7 @@ from fastapi import HTTPException
 
 from podify.config import (
     SEARCH_TIMEOUT_SECONDS,
+    get_setting,
     get_ytdlp_cookie_file,
     get_ytdlp_cookies_from_browser,
     get_ytdlp_max_concurrent_lookups,
@@ -41,6 +42,14 @@ YTDLP_BOT_CHECK_MARKERS = (
     "sign in to confirm you're not a bot",
     "use --cookies-from-browser or --cookies",
 )
+DEFAULT_YTDLP_SLEEP_REQUESTS_SECONDS = 0.25
+BOTCHECK_RETRY_SLEEP_REQUESTS_SECONDS = 1.0
+BOTCHECK_RETRY_EXTRACTOR_ARGS = {
+    "youtube": {
+        "player_client": ["default", "web_embedded"],
+        "player_skip": ["webpage", "configs"],
+    }
+}
 
 
 def normalize_candidate_url(candidate: str) -> str:
@@ -375,7 +384,24 @@ def run_ytdlp_lookup(task, *, timeout_seconds: int) -> Any:
         raise
 
 
-def build_ydl_options(*, flat_search: bool = False) -> dict[str, Any]:
+def parse_float_setting(
+    name: str,
+    *,
+    default: float,
+    minimum: float = 0.0,
+    maximum: float = 120.0,
+) -> float:
+    raw_value = (get_setting(name) or "").strip()
+    if not raw_value:
+        return default
+    try:
+        parsed = float(raw_value)
+    except ValueError:
+        return default
+    return min(maximum, max(minimum, parsed))
+
+
+def build_ydl_options(*, flat_search: bool = False, bot_check_retry: bool = False) -> dict[str, Any]:
     options: dict[str, Any] = {
         "quiet": True,
         "no_warnings": True,
@@ -396,6 +422,31 @@ def build_ydl_options(*, flat_search: bool = False) -> dict[str, Any]:
     }
     if flat_search:
         options["lazy_playlist"] = True
+
+    proxy_url = (get_setting("PODIFY_YTDLP_PROXY") or "").strip()
+    if proxy_url:
+        options["proxy"] = proxy_url
+
+    source_address = (get_setting("PODIFY_YTDLP_SOURCE_ADDRESS") or "").strip()
+    if source_address:
+        options["source_address"] = source_address
+
+    sleep_interval_requests = parse_float_setting(
+        "PODIFY_YTDLP_SLEEP_REQUESTS_SECONDS",
+        default=DEFAULT_YTDLP_SLEEP_REQUESTS_SECONDS,
+    )
+    if bot_check_retry:
+        sleep_interval_requests = max(
+            sleep_interval_requests,
+            parse_float_setting(
+                "PODIFY_YTDLP_BOTCHECK_RETRY_SLEEP_REQUESTS_SECONDS",
+                default=BOTCHECK_RETRY_SLEEP_REQUESTS_SECONDS,
+            ),
+        )
+        options["extractor_args"] = BOTCHECK_RETRY_EXTRACTOR_ARGS
+
+    if sleep_interval_requests > 0:
+        options["sleep_interval_requests"] = sleep_interval_requests
 
     cookie_file = get_ytdlp_cookie_file()
     if cookie_file:
@@ -418,19 +469,23 @@ def ytdlp_operator_guidance(context: str) -> str:
             f"{context} YouTube is still challenging this server IP even with cookies configured. "
             "On Railway, reduce PODIFY_YTDLP_MAX_CONCURRENT_LOOKUPS to 1 and redeploy/restart to "
             "reduce burst traffic from shared egress IPs. If it still fails, move regions or use "
-            "a different outbound IP, then refresh cookies and retry."
+            "a different outbound IP (PODIFY_YTDLP_PROXY or PODIFY_YTDLP_SOURCE_ADDRESS), then "
+            "refresh cookies and retry."
         )
     if get_ytdlp_cookies_from_browser():
         return (
             f"{context} YouTube is still challenging this server IP while using browser cookies. "
             "On Railway, reduce PODIFY_YTDLP_MAX_CONCURRENT_LOOKUPS to 1 and redeploy/restart to "
             "reduce burst traffic from shared egress IPs. If it still fails, move regions or use "
-            "a different outbound IP, then refresh the browser session and retry."
+            "a different outbound IP (PODIFY_YTDLP_PROXY or PODIFY_YTDLP_SOURCE_ADDRESS), then "
+            "refresh the browser session and retry."
         )
     return (
         f"{context} YouTube is challenging this server IP. On Railway, set "
         "PODIFY_YTDLP_MAX_CONCURRENT_LOOKUPS=1 and redeploy/restart to reduce burst traffic from "
-        "shared egress IPs. If it still fails, move regions or use a different outbound IP. "
+        "shared egress IPs. If it still fails, move regions or use a different outbound IP via "
+        "PODIFY_YTDLP_PROXY or PODIFY_YTDLP_SOURCE_ADDRESS. "
+        "You can also raise PODIFY_YTDLP_SLEEP_REQUESTS_SECONDS to slow request rate. "
         "Optionally configure PODIFY_YTDLP_COOKIE_FILE, PODIFY_YTDLP_COOKIE_TEXT, or "
         "PODIFY_YTDLP_COOKIES_FROM_BROWSER if you choose to provide authenticated YouTube cookies."
     )
@@ -466,30 +521,51 @@ def resolve_playback_info(video_id_or_url: str) -> dict[str, Any]:
     if cached:
         return cached
 
-    ydl_opts = build_ydl_options(flat_search=False)
+    primary_ydl_opts = build_ydl_options(flat_search=False, bot_check_retry=False)
+    retry_ydl_opts = build_ydl_options(flat_search=False, bot_check_retry=True)
 
-    def run_lookup() -> dict[str, Any]:
+    def run_lookup(ydl_opts: dict[str, Any]) -> dict[str, Any]:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             return ydl.extract_info(canonical_watch_url(video_id), download=False)
 
     try:
-        info = run_ytdlp_lookup(run_lookup, timeout_seconds=SEARCH_TIMEOUT_SECONDS)
+        info = run_ytdlp_lookup(
+            lambda: run_lookup(primary_ydl_opts),
+            timeout_seconds=SEARCH_TIMEOUT_SECONDS,
+        )
     except concurrent.futures.TimeoutError as exc:
         raise HTTPException(status_code=504, detail="Playback lookup timed out. Please try again.") from exc
     except HTTPException:
         raise
     except Exception as exc:
         if is_ytdlp_bot_check_error(exc):
-            guidance = ytdlp_operator_guidance("Preview lookup is temporarily unavailable.")
-            return cache_playback_info(
-                video_id,
-                build_unavailable_playback_payload(video_id, guidance),
-                ttl_seconds=PLAYBACK_ERROR_CACHE_TTL_SECONDS,
-            )
-        raise HTTPException(
-            status_code=500,
-            detail="Playback lookup failed. Please try another video or use Watch on YouTube.",
-        ) from exc
+            try:
+                info = run_ytdlp_lookup(
+                    lambda: run_lookup(retry_ydl_opts),
+                    timeout_seconds=SEARCH_TIMEOUT_SECONDS,
+                )
+            except concurrent.futures.TimeoutError as retry_timeout:
+                raise HTTPException(
+                    status_code=504,
+                    detail="Playback lookup timed out. Please try again.",
+                ) from retry_timeout
+            except Exception as retry_exc:
+                if is_ytdlp_bot_check_error(retry_exc):
+                    guidance = ytdlp_operator_guidance("Preview lookup is temporarily unavailable.")
+                    return cache_playback_info(
+                        video_id,
+                        build_unavailable_playback_payload(video_id, guidance),
+                        ttl_seconds=PLAYBACK_ERROR_CACHE_TTL_SECONDS,
+                    )
+                raise HTTPException(
+                    status_code=500,
+                    detail="Playback lookup failed. Please try another video or use Watch on YouTube.",
+                ) from retry_exc
+        else:
+            raise HTTPException(
+                status_code=500,
+                detail="Playback lookup failed. Please try another video or use Watch on YouTube.",
+            ) from exc
 
     if not info or info.get("_type") == "playlist":
         raise HTTPException(status_code=404, detail="Playable video details were not found.")
@@ -528,10 +604,12 @@ def search_youtube(query: str, blocked_ids: set[str] | None = None) -> list[dict
 
     ignored_ids = blocked_ids or set()
     is_direct_url = cleaned_query.startswith("http://") or cleaned_query.startswith("https://")
-    ydl_opts = build_ydl_options(flat_search=not is_direct_url)
-    ydl_opts["default_search"] = "ytsearch"
+    primary_ydl_opts = build_ydl_options(flat_search=not is_direct_url, bot_check_retry=False)
+    primary_ydl_opts["default_search"] = "ytsearch"
+    retry_ydl_opts = build_ydl_options(flat_search=not is_direct_url, bot_check_retry=True)
+    retry_ydl_opts["default_search"] = "ytsearch"
 
-    def run_lookup() -> list[dict[str, Any]]:
+    def run_lookup(ydl_opts: dict[str, Any]) -> list[dict[str, Any]]:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             if is_direct_url:
                 if not is_allowed_youtube_url(cleaned_query):
@@ -549,18 +627,32 @@ def search_youtube(query: str, blocked_ids: set[str] | None = None) -> list[dict
             return result.get("entries", []) or []
 
     try:
-        entries = run_ytdlp_lookup(run_lookup, timeout_seconds=SEARCH_TIMEOUT_SECONDS)
+        entries = run_ytdlp_lookup(
+            lambda: run_lookup(primary_ydl_opts),
+            timeout_seconds=SEARCH_TIMEOUT_SECONDS,
+        )
     except concurrent.futures.TimeoutError as exc:
         raise HTTPException(status_code=504, detail="Search timed out. Please try again.") from exc
     except HTTPException:
         raise
     except Exception as exc:
         if is_ytdlp_bot_check_error(exc):
-            raise HTTPException(
-                status_code=503,
-                detail=ytdlp_operator_guidance("Search is temporarily unavailable."),
-            ) from exc
-        raise HTTPException(status_code=500, detail="Search failed. Please try again.") from exc
+            try:
+                entries = run_ytdlp_lookup(
+                    lambda: run_lookup(retry_ydl_opts),
+                    timeout_seconds=SEARCH_TIMEOUT_SECONDS,
+                )
+            except concurrent.futures.TimeoutError as retry_timeout:
+                raise HTTPException(status_code=504, detail="Search timed out. Please try again.") from retry_timeout
+            except Exception as retry_exc:
+                if is_ytdlp_bot_check_error(retry_exc):
+                    raise HTTPException(
+                        status_code=503,
+                        detail=ytdlp_operator_guidance("Search is temporarily unavailable."),
+                    ) from retry_exc
+                raise HTTPException(status_code=500, detail="Search failed. Please try again.") from retry_exc
+        else:
+            raise HTTPException(status_code=500, detail="Search failed. Please try again.") from exc
 
     results: list[dict[str, Any]] = []
     for entry in entries:

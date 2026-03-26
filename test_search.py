@@ -106,6 +106,35 @@ class BotCheckYoutubeDL(FakeYoutubeDL):
         )
 
 
+class BotCheckThenSuccessYoutubeDL(FakeYoutubeDL):
+    call_count = 0
+    option_history: list[dict] = []
+
+    def __init__(self, options):
+        super().__init__(options)
+        type(self).option_history.append(dict(options))
+
+    def extract_info(self, query, download=False):
+        if type(self).call_count == 0:
+            type(self).call_count += 1
+            raise RuntimeError(
+                "Sign in to confirm you're not a bot. Use --cookies-from-browser or --cookies."
+            )
+        if query.startswith("ytsearch10:"):
+            return {
+                "entries": [
+                    {
+                        "id": "videoidx111",
+                        "title": "Recovered result",
+                        "channel": "Retry Channel",
+                        "duration": 187,
+                        "url": "https://www.youtube.com/watch?v=videoidx111",
+                    }
+                ]
+            }
+        return super().extract_info(query, download=download)
+
+
 class SearchTests(unittest.TestCase):
     def setUp(self):
         fd, self.state_path = tempfile.mkstemp(prefix="podify-search-", suffix=".json")
@@ -121,6 +150,10 @@ class SearchTests(unittest.TestCase):
         os.environ.pop("PODIFY_YTDLP_COOKIES_FROM_BROWSER", None)
         os.environ.pop("PODIFY_YTDLP_COOKIE_FILE", None)
         os.environ.pop("PODIFY_YTDLP_COOKIE_TEXT", None)
+        os.environ.pop("PODIFY_YTDLP_PROXY", None)
+        os.environ.pop("PODIFY_YTDLP_SOURCE_ADDRESS", None)
+        os.environ.pop("PODIFY_YTDLP_SLEEP_REQUESTS_SECONDS", None)
+        os.environ.pop("PODIFY_YTDLP_BOTCHECK_RETRY_SLEEP_REQUESTS_SECONDS", None)
         clear_ytdlp_runtime_cookie_file()
         if os.path.exists(self.state_path):
             os.remove(self.state_path)
@@ -193,6 +226,42 @@ class SearchTests(unittest.TestCase):
                 "yt-dlp-cookies.runtime.txt"
             )
         )
+
+    @patch("main.yt_dlp.YoutubeDL", FlatSearchYoutubeDL)
+    def test_search_supports_proxy_source_and_sleep_settings(self):
+        os.environ["PODIFY_YTDLP_PROXY"] = "http://proxy.example:8080"
+        os.environ["PODIFY_YTDLP_SOURCE_ADDRESS"] = "203.0.113.7"
+        os.environ["PODIFY_YTDLP_SLEEP_REQUESTS_SECONDS"] = "0.9"
+
+        results = asyncio.run(main.search("hello"))
+
+        self.assertEqual(len(results), 1)
+        self.assertEqual(FlatSearchYoutubeDL.last_options["proxy"], "http://proxy.example:8080")
+        self.assertEqual(FlatSearchYoutubeDL.last_options["source_address"], "203.0.113.7")
+        self.assertEqual(FlatSearchYoutubeDL.last_options["sleep_interval_requests"], 0.9)
+
+    @patch("main.yt_dlp.YoutubeDL", BotCheckThenSuccessYoutubeDL)
+    def test_search_retries_with_botcheck_profile(self):
+        BotCheckThenSuccessYoutubeDL.call_count = 0
+        BotCheckThenSuccessYoutubeDL.option_history = []
+        os.environ["PODIFY_YTDLP_BOTCHECK_RETRY_SLEEP_REQUESTS_SECONDS"] = "1.5"
+
+        results = asyncio.run(main.search("hello"))
+
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]["video_id"], "videoidx111")
+        self.assertGreaterEqual(len(BotCheckThenSuccessYoutubeDL.option_history), 2)
+        retry_options = BotCheckThenSuccessYoutubeDL.option_history[-1]
+        self.assertIn("extractor_args", retry_options)
+        self.assertEqual(
+            retry_options["extractor_args"]["youtube"]["player_client"],
+            ["default", "web_embedded"],
+        )
+        self.assertEqual(
+            retry_options["extractor_args"]["youtube"]["player_skip"],
+            ["webpage", "configs"],
+        )
+        self.assertEqual(retry_options["sleep_interval_requests"], 1.5)
 
     @patch("main.yt_dlp.YoutubeDL", BotCheckYoutubeDL)
     def test_search_returns_operator_guidance_on_youtube_bot_check(self):

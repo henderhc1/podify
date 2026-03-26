@@ -59,6 +59,10 @@ $env:PODIFY_EXPOSE_DEMO_VERIFICATION="0"
 $env:PODIFY_YTDLP_COOKIE_FILE="data/yt-dlp-cookies.txt"
 $env:PODIFY_YTDLP_COOKIES_FROM_BROWSER="chrome:Default"
 $env:PODIFY_YTDLP_MAX_CONCURRENT_LOOKUPS="1"
+$env:PODIFY_YTDLP_PROXY="http://user:pass@proxy-host:port"
+$env:PODIFY_YTDLP_SOURCE_ADDRESS="203.0.113.10"
+$env:PODIFY_YTDLP_SLEEP_REQUESTS_SECONDS="0.25"
+$env:PODIFY_YTDLP_BOTCHECK_RETRY_SLEEP_REQUESTS_SECONDS="1.0"
 $env:PODIFY_DMCA_AGENT_NAME="Your DMCA Agent"
 $env:PODIFY_DMCA_AGENT_EMAIL="dmca@example.com"
 $env:PODIFY_DMCA_RESPONSE_WINDOW_HOURS="48"
@@ -70,6 +74,9 @@ Set `PODIFY_ADMIN_TOKEN` before using the admin API locally. Admin routes stay d
 `PODIFY_EXPOSE_DEMO_VERIFICATION` only matters when email verification is enabled. Leave it off for secure behavior; only turn it on for local demo testing.
 `PODIFY_YTDLP_COOKIE_FILE`, `PODIFY_YTDLP_COOKIE_TEXT`, or `PODIFY_YTDLP_COOKIES_FROM_BROWSER` is optional if you choose to provide authenticated YouTube cookies.
 `PODIFY_YTDLP_MAX_CONCURRENT_LOOKUPS` controls the shared yt-dlp worker pool size (default `1` and recommended for Railway).
+`PODIFY_YTDLP_PROXY` and `PODIFY_YTDLP_SOURCE_ADDRESS` let you force yt-dlp egress through a different outbound path.
+`PODIFY_YTDLP_SLEEP_REQUESTS_SECONDS` controls pause time between yt-dlp requests (default `0.25`).
+`PODIFY_YTDLP_BOTCHECK_RETRY_SLEEP_REQUESTS_SECONDS` controls the stricter retry profile pause after bot-check errors (default `1.0`).
 Admins can also upload Netscape `cookies.txt` content directly from the Admin UI (`/admin/ytdlp/cookies`), which Podify stores as `data/yt-dlp-cookies.runtime.txt` and uses automatically when env cookie settings are not present.
 
 ## Access Control
@@ -120,7 +127,9 @@ Important: `.gitignore` prevents accidental commits. It does **not** prevent cop
 - `nixpacks.toml` keeps `ffmpeg` available for platforms that rely on Nixpacks.
 - Keep secrets in Railway environment variables instead of committed files.
 - Search uses flat `yt-dlp` query extraction to reduce per-result lookups and improve load time.
-- If Railway logs show `Sign in to confirm you're not a bot`, set `PODIFY_YTDLP_MAX_CONCURRENT_LOOKUPS=1`, redeploy/restart, and retry. If needed, move regions to get a different outbound path.
+- If Railway logs show `Sign in to confirm you're not a bot`, set `PODIFY_YTDLP_MAX_CONCURRENT_LOOKUPS=1`, redeploy/restart, and retry.
+- Raise `PODIFY_YTDLP_SLEEP_REQUESTS_SECONDS` (for example `0.75` to `1.5`) to slow extraction request bursts.
+- If needed, route egress differently with `PODIFY_YTDLP_PROXY` or `PODIFY_YTDLP_SOURCE_ADDRESS` (and/or move regions) so requests come from a different outbound path.
 - Cookie-based auth remains optional: `PODIFY_YTDLP_COOKIE_FILE`, `PODIFY_YTDLP_COOKIE_TEXT`, and `PODIFY_YTDLP_COOKIES_FROM_BROWSER` can still be used when your threat model permits it.
 - Playback now degrades gracefully when YouTube blocks stream extraction: Podify keeps the modal open, shows the reason, and preserves `Watch on YouTube - Support the Creator`.
 
