@@ -93,8 +93,11 @@
     .embed{padding:1rem 1.2rem 0}
     .embed .banner{margin-top:.8rem}
     .copy{padding:1rem 1.2rem 1.2rem}
+    .player-tools{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:.8rem;margin-top:1rem}
+    .player-tools label{display:flex;align-items:center;gap:.65rem;color:var(--muted);font-size:.92rem;font-weight:700}
+    .player-tools select{width:auto;min-width:180px;max-width:100%;background:#ffffffd9}
     @media (max-width:960px){.hero,.grid,.split{grid-template-columns:1fr}.quad{grid-template-columns:repeat(2,minmax(0,1fr))}}
-    @media (max-width:760px){.wrap{width:min(1180px,calc(100% - 1rem))}.top .wrap{flex-direction:column;align-items:flex-start}.chip{width:100%;justify-content:center}.stats,.quad{grid-template-columns:1fr}.video{grid-template-columns:1fr}.item{flex-direction:column;align-items:flex-start}.card,.panel{padding:1rem}.player{max-height:calc(100vh - 1rem);border-radius:20px}.modal{padding:.5rem}.player-head,.embed,.copy{padding-left:1rem;padding-right:1rem}.copy .actions{flex-direction:column}.copy .actions .btn,.copy .actions a{width:100%;flex:1 1 auto}}
+    @media (max-width:760px){.wrap{width:min(1180px,calc(100% - 1rem))}.top .wrap{flex-direction:column;align-items:flex-start}.chip{width:100%;justify-content:center}.stats,.quad{grid-template-columns:1fr}.video{grid-template-columns:1fr}.item{flex-direction:column;align-items:flex-start}.card,.panel{padding:1rem}.player{max-height:calc(100vh - 1rem);border-radius:20px}.modal{padding:.5rem}.player-head,.embed,.copy{padding-left:1rem;padding-right:1rem}.player-tools{align-items:flex-start}.player-tools label,.player-tools select{width:100%}.copy .actions{flex-direction:column}.copy .actions .btn,.copy .actions a{width:100%;flex:1 1 auto}}
     @media (max-width:520px){h1{font-size:1.6rem}.mark{width:44px;height:44px;border-radius:14px}.tabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.tab{justify-content:center;padding:.75rem .85rem}.btn,.row .btn{width:100%}}
   </style>
 </head>
@@ -370,6 +373,12 @@
       <div class="copy">
         <p id="modal-player-disclaimer"><strong>This is a preview.</strong> Support the creator by watching the full video on YouTube.</p>
         <p id="modal-desc" style="margin-top:.65rem;color:var(--muted);line-height:1.55">Select a video to see its description here.</p>
+        <div class="player-tools" id="modal-quality-wrap" style="display:none">
+          <label for="modal-quality">
+            Quality
+            <select id="modal-quality" aria-label="Choose preview quality"></select>
+          </label>
+        </div>
         <div class="actions">
           <button class="btn ghost" id="modal-fullscreen" type="button">Fullscreen</button>
           <a class="btn secondary" id="modal-youtube" href="#" target="_blank" rel="noopener noreferrer">Watch on YouTube - Support the Creator</a>
@@ -388,6 +397,7 @@
     let latestAdminAccessLink = '';
     let currentVideo = null;
     let currentPlaybackToken = '';
+    let currentPlaybackSources = [];
     let libraryLoaded = false;
     let dmcaLoaded = false;
     let accessState = null;
@@ -593,6 +603,58 @@
       video.removeAttribute('src');
       while (video.firstChild) video.removeChild(video.firstChild);
       video.load();
+      currentPlaybackSources = [];
+      $('modal-quality').innerHTML = '';
+      $('modal-quality').disabled = true;
+      $('modal-quality-wrap').style.display = 'none';
+    }
+
+    function sourceLabel(source, index) {
+      const parts = [];
+      if (source.quality) parts.push(source.quality);
+      if (source.mime_type && source.mime_type.startsWith('video/')) parts.push(source.mime_type.replace('video/', '').toUpperCase());
+      return parts.join(' / ') || (index === 0 ? 'Best available' : `Option ${index + 1}`);
+    }
+
+    function setPlaybackSource(index, { resumeAt = 0, autoplay = true } = {}) {
+      const video = $('modal-video');
+      const source = currentPlaybackSources[index];
+      if (!source || !source.url) return;
+
+      video.pause();
+      video.removeAttribute('src');
+      while (video.firstChild) video.removeChild(video.firstChild);
+
+      const el = document.createElement('source');
+      el.src = source.url;
+      if (source.mime_type) el.type = source.mime_type;
+      video.appendChild(el);
+
+      if (resumeAt > 0) {
+        video.addEventListener('loadedmetadata', () => {
+          try {
+            video.currentTime = resumeAt;
+          } catch (_) {}
+          if (autoplay) video.play().catch(() => {});
+        }, { once: true });
+      }
+
+      video.load();
+      if (resumeAt <= 0 && autoplay) video.play().catch(() => {});
+      $('modal-quality').value = String(index);
+    }
+
+    function renderQualityPicker(sources) {
+      const select = $('modal-quality');
+      select.innerHTML = '';
+      sources.forEach((source, index) => {
+        const option = document.createElement('option');
+        option.value = String(index);
+        option.textContent = sourceLabel(source, index);
+        select.appendChild(option);
+      });
+      select.disabled = sources.length <= 1;
+      $('modal-quality-wrap').style.display = sources.length ? 'flex' : 'none';
     }
 
     function applyPlayback(playback) {
@@ -603,22 +665,14 @@
       $('modal-desc').textContent = playback.description || (currentVideo ? currentVideo.description : 'Open this video on YouTube for the full watch experience and creator support.');
       video.poster = playback.thumbnail_url || (currentVideo ? currentVideo.thumbnail_url : '');
 
-      const sources = (playback.sources || []).length
+      currentPlaybackSources = (playback.sources || []).length
         ? playback.sources
         : (playback.stream_url ? [{ url: playback.stream_url, mime_type: playback.mime_type || '' }] : []);
-
-      sources.forEach((source) => {
-        if (!source.url) return;
-        const el = document.createElement('source');
-        el.src = source.url;
-        if (source.mime_type) el.type = source.mime_type;
-        video.appendChild(el);
-      });
+      renderQualityPicker(currentPlaybackSources);
+      setPlaybackSource(0);
 
       banner('modal-video-banner');
       if (playback.video_url) $('modal-youtube').href = playback.video_url;
-      video.load();
-      video.play().catch(() => {});
     }
 
     async function requestVideoFullscreen() {
@@ -757,6 +811,12 @@
     $('modal').addEventListener('click', (e) => { if (e.target === $('modal')) closeVideo(); });
     $('modal-save').addEventListener('click', async () => { if (currentVideo) await saveVideo(currentVideo); });
     $('modal-fullscreen').addEventListener('click', async () => { await requestVideoFullscreen(); });
+    $('modal-quality').addEventListener('change', (e) => {
+      const nextIndex = Number(e.target.value);
+      if (!Number.isInteger(nextIndex) || !currentPlaybackSources[nextIndex]) return;
+      const video = $('modal-video');
+      setPlaybackSource(nextIndex, { resumeAt: video.currentTime || 0, autoplay: !video.paused });
+    });
     $('modal-video').addEventListener('error', () => {
       banner('modal-video-banner', 'Preview stream failed to load. Use Watch on YouTube instead.', 'error');
     });

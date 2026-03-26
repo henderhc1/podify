@@ -259,6 +259,17 @@ def mime_type_for_extension(ext: str | None) -> str | None:
     return None
 
 
+def describe_source_quality(fmt: dict[str, Any]) -> str:
+    label = str(fmt.get("format_note") or fmt.get("resolution") or "").strip()
+    if label:
+        return label
+
+    height = int(fmt.get("height") or 0)
+    if height > 0:
+        return f"{height}p"
+    return ""
+
+
 def browser_playback_sort_key(fmt: dict[str, Any]) -> tuple[int, int, int, float]:
     ext = str(fmt.get("ext") or "").lower()
     protocol = str(fmt.get("protocol") or "").lower()
@@ -302,7 +313,7 @@ def select_browser_playback_sources(info: dict[str, Any]) -> list[dict[str, Any]
                 "url": url,
                 "mime_type": mime_type_for_extension(fmt.get("ext")),
                 "format_id": str(fmt.get("format_id") or ""),
-                "quality": str(fmt.get("format_note") or fmt.get("resolution") or "").strip(),
+                "quality": describe_source_quality(fmt),
             }
         )
         seen_urls.add(url)
