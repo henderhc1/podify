@@ -93,11 +93,11 @@ def get_max_active_users() -> int:
 
 
 def get_ytdlp_max_concurrent_lookups() -> int:
-    raw_limit = get_setting("PODIFY_YTDLP_MAX_CONCURRENT_LOOKUPS", "10") or "10"
+    raw_limit = get_setting("PODIFY_YTDLP_MAX_CONCURRENT_LOOKUPS", "1") or "1"
     try:
         return min(64, max(1, int(raw_limit)))
     except ValueError:
-        return 10
+        return 1
 
 
 def get_admin_token() -> str:

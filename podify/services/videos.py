@@ -415,18 +415,24 @@ def is_ytdlp_bot_check_error(exc: Exception) -> bool:
 def ytdlp_operator_guidance(context: str) -> str:
     if get_ytdlp_cookie_file():
         return (
-            f"{context} YouTube is still challenging this server even with cookies configured. "
-            "Refresh the yt-dlp cookies and try again."
+            f"{context} YouTube is still challenging this server IP even with cookies configured. "
+            "On Railway, reduce PODIFY_YTDLP_MAX_CONCURRENT_LOOKUPS to 1 and redeploy/restart to "
+            "reduce burst traffic from shared egress IPs. If it still fails, move regions or use "
+            "a different outbound IP, then refresh cookies and retry."
         )
     if get_ytdlp_cookies_from_browser():
         return (
-            f"{context} YouTube is still challenging this server while using browser cookies. "
-            "Refresh the browser session, then retry."
+            f"{context} YouTube is still challenging this server IP while using browser cookies. "
+            "On Railway, reduce PODIFY_YTDLP_MAX_CONCURRENT_LOOKUPS to 1 and redeploy/restart to "
+            "reduce burst traffic from shared egress IPs. If it still fails, move regions or use "
+            "a different outbound IP, then refresh the browser session and retry."
         )
     return (
-        f"{context} YouTube is challenging this server IP. Configure "
-        "PODIFY_YTDLP_COOKIE_FILE, PODIFY_YTDLP_COOKIE_TEXT, or "
-        "PODIFY_YTDLP_COOKIES_FROM_BROWSER so yt-dlp can use authenticated YouTube cookies."
+        f"{context} YouTube is challenging this server IP. On Railway, set "
+        "PODIFY_YTDLP_MAX_CONCURRENT_LOOKUPS=1 and redeploy/restart to reduce burst traffic from "
+        "shared egress IPs. If it still fails, move regions or use a different outbound IP. "
+        "Optionally configure PODIFY_YTDLP_COOKIE_FILE, PODIFY_YTDLP_COOKIE_TEXT, or "
+        "PODIFY_YTDLP_COOKIES_FROM_BROWSER if you choose to provide authenticated YouTube cookies."
     )
 
 
