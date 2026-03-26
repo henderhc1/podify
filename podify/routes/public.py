@@ -4,6 +4,7 @@ from typing import Any
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Request
 from fastapi.responses import FileResponse
+from starlette.concurrency import run_in_threadpool
 
 from podify.auth import describe_access_state, require_active_user
 from podify.config import (
@@ -56,7 +57,7 @@ async def get_config(request: Request) -> dict[str, Any]:
 async def search(q: str, _: dict[str, Any] = Depends(require_active_user)) -> list[dict[str, Any]]:
     state = load_state()
     blocked_ids = {item.get("video_id") for item in state["blocked_videos"]}
-    return search_youtube(q, blocked_ids)
+    return await run_in_threadpool(search_youtube, q, blocked_ids)
 
 
 @router.get("/playback/{video_id}")
@@ -74,7 +75,7 @@ async def get_playback(
             status_code=451,
             detail="This video has been blocked from preview after a DMCA notice.",
         )
-    return resolve_playback_info(normalized_id)
+    return await run_in_threadpool(resolve_playback_info, normalized_id)
 
 
 @router.get("/library")

@@ -14,6 +14,7 @@ from podify.config import (
     SEARCH_TIMEOUT_SECONDS,
     get_ytdlp_cookie_file,
     get_ytdlp_cookies_from_browser,
+    get_ytdlp_max_concurrent_lookups,
 )
 from podify.state import utc_now
 
@@ -34,6 +35,8 @@ PLAYBACK_CACHE_TTL_SECONDS = 300
 PLAYBACK_ERROR_CACHE_TTL_SECONDS = 30
 PLAYBACK_CACHE: dict[str, dict[str, Any]] = {}
 PLAYBACK_CACHE_LOCK = Lock()
+YTDLP_LOOKUP_WORKERS = get_ytdlp_max_concurrent_lookups()
+YTDLP_LOOKUP_EXECUTOR = concurrent.futures.ThreadPoolExecutor(max_workers=YTDLP_LOOKUP_WORKERS)
 YTDLP_BOT_CHECK_MARKERS = (
     "sign in to confirm you're not a bot",
     "use --cookies-from-browser or --cookies",
@@ -363,6 +366,15 @@ def clear_playback_cache() -> int:
     return count
 
 
+def run_ytdlp_lookup(task, *, timeout_seconds: int) -> Any:
+    future = YTDLP_LOOKUP_EXECUTOR.submit(task)
+    try:
+        return future.result(timeout=timeout_seconds)
+    except concurrent.futures.TimeoutError:
+        future.cancel()
+        raise
+
+
 def build_ydl_options(*, flat_search: bool = False) -> dict[str, Any]:
     options: dict[str, Any] = {
         "quiet": True,
@@ -455,9 +467,7 @@ def resolve_playback_info(video_id_or_url: str) -> dict[str, Any]:
             return ydl.extract_info(canonical_watch_url(video_id), download=False)
 
     try:
-        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
-            future = executor.submit(run_lookup)
-            info = future.result(timeout=SEARCH_TIMEOUT_SECONDS)
+        info = run_ytdlp_lookup(run_lookup, timeout_seconds=SEARCH_TIMEOUT_SECONDS)
     except concurrent.futures.TimeoutError as exc:
         raise HTTPException(status_code=504, detail="Playback lookup timed out. Please try again.") from exc
     except HTTPException:
@@ -533,9 +543,7 @@ def search_youtube(query: str, blocked_ids: set[str] | None = None) -> list[dict
             return result.get("entries", []) or []
 
     try:
-        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
-            future = executor.submit(run_lookup)
-            entries = future.result(timeout=SEARCH_TIMEOUT_SECONDS)
+        entries = run_ytdlp_lookup(run_lookup, timeout_seconds=SEARCH_TIMEOUT_SECONDS)
     except concurrent.futures.TimeoutError as exc:
         raise HTTPException(status_code=504, detail="Search timed out. Please try again.") from exc
     except HTTPException:

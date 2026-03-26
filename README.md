@@ -57,6 +57,7 @@ $env:PODIFY_REQUIRE_EMAIL_VERIFICATION="0"
 $env:PODIFY_EXPOSE_DEMO_VERIFICATION="0"
 $env:PODIFY_YTDLP_COOKIE_FILE="data/yt-dlp-cookies.txt"
 $env:PODIFY_YTDLP_COOKIES_FROM_BROWSER="chrome:Default"
+$env:PODIFY_YTDLP_MAX_CONCURRENT_LOOKUPS="10"
 $env:PODIFY_DMCA_AGENT_NAME="Your DMCA Agent"
 $env:PODIFY_DMCA_AGENT_EMAIL="dmca@example.com"
 $env:PODIFY_DMCA_RESPONSE_WINDOW_HOURS="48"
@@ -67,6 +68,7 @@ Set `PODIFY_ADMIN_TOKEN` before using the admin API locally. Admin routes stay d
 `PODIFY_REQUIRE_EMAIL_VERIFICATION` is disabled by default right now, so valid emails can sign up immediately. Turn it on later when a real outbound email flow is ready.
 `PODIFY_EXPOSE_DEMO_VERIFICATION` only matters when email verification is enabled. Leave it off for secure behavior; only turn it on for local demo testing.
 `PODIFY_YTDLP_COOKIE_FILE`, `PODIFY_YTDLP_COOKIE_TEXT`, or `PODIFY_YTDLP_COOKIES_FROM_BROWSER` is optional, but operators should expect to need one of them when YouTube starts returning "Sign in to confirm you're not a bot" to the server IP.
+`PODIFY_YTDLP_MAX_CONCURRENT_LOOKUPS` controls the shared yt-dlp worker pool size (default `10`).
 Admins can also upload Netscape `cookies.txt` content directly from the Admin UI (`/admin/ytdlp/cookies`), which Podify stores as `data/yt-dlp-cookies.runtime.txt` and uses automatically when env cookie settings are not present.
 
 ## Access Control
