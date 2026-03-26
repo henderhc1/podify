@@ -11,6 +11,7 @@ from podify.config import (
     STATIC_DIR,
     get_max_active_users,
     is_demo_verification_enabled,
+    is_email_verification_required,
 )
 from podify.services.users import active_user_count, validate_email
 from podify.services.videos import (
@@ -45,6 +46,7 @@ async def get_config(request: Request) -> dict[str, Any]:
         "library": library_stats(state),
         "security": {
             "demo_verification_enabled": is_demo_verification_enabled(),
+            "email_verification_required": is_email_verification_required(),
         },
         "access": describe_access_state(state, request),
     }

@@ -195,12 +195,12 @@
           <div class="head">
             <div>
               <h3>Request access</h3>
-              <div class="soft">Users verify email first. If the cap is full, they move to the waitlist.</div>
+              <div class="soft">Enter any valid email to sign up. If the cap is full, you move to the waitlist.</div>
             </div>
           </div>
           <form class="row" id="access-form">
             <input class="grow" id="access-email" type="email" placeholder="you@example.com">
-            <button class="btn primary" type="submit">Request access</button>
+            <button class="btn primary" type="submit">Sign up</button>
           </form>
           <div class="banner info" id="access-banner"></div>
           <div class="banner info" id="verify-banner"></div>
@@ -418,6 +418,14 @@
       }
     };
 
+    const emailVerificationRequired = () => Boolean(config && config.security && config.security.email_verification_required);
+    const accessPromptMessage = () => emailVerificationRequired()
+      ? 'Verify your email before using Podify.'
+      : 'Sign up with a valid email before using Podify.';
+    const accessTabPromptMessage = () => emailVerificationRequired()
+      ? 'Verify your email in the Access tab before searching or previewing videos.'
+      : 'Use the Access tab to sign up with a valid email before searching or previewing videos.';
+
     async function activateTab(tabName) {
       const btn = document.querySelector(`.tab[data-tab="${tabName}"]`);
       document.querySelectorAll('.tab').forEach((b) => b.classList.toggle('active', b === btn));
@@ -432,7 +440,7 @@
 
     async function showAccessRequired(message) {
       await activateTab('access');
-      banner('access-banner', message || 'Verify your email before using Podify.', 'error');
+      banner('access-banner', message || accessPromptMessage(), 'error');
     }
 
     function isProtectedAccessError(err) {
@@ -460,7 +468,7 @@
 
     function syncConfig(data) {
       config = data;
-      accessState = data.access || { authenticated: false, service_access: false, reason: 'Verify your email before using Podify.', user: null };
+      accessState = data.access || { authenticated: false, service_access: false, reason: accessPromptMessage(), user: null };
       $('cap-chip').textContent = `${data.active_user_count} / ${data.max_active_users} active users`;
       $('cap-detail').textContent = `${data.active_user_count} / ${data.max_active_users} active users`;
       $('cap-state').textContent = data.registration_open ? 'Open' : 'Waitlist only';
@@ -482,12 +490,12 @@
     }
 
     function applyAccessState(access) {
-      const reason = access.reason || 'Verify your email before using Podify.';
+      const reason = access.reason || accessPromptMessage();
       const user = access.user;
       $('logout-button').style.display = access.service_access ? 'inline-flex' : 'none';
 
       if (access.service_access && user) {
-        banner('access-banner', `Signed in as ${user.email}. Verified access is active.`);
+        banner('access-banner', `Signed in as ${user.email}. Access is active.`);
         return;
       }
 
@@ -495,7 +503,7 @@
       libraryLoaded = false;
       renderLibrary();
       if (!results.length) {
-        banner('search-banner', 'Verify your email in the Access tab before searching or previewing videos.');
+        banner('search-banner', accessTabPromptMessage());
       }
 
       if (access.authenticated && user) {
@@ -508,6 +516,10 @@
 
     function renderVerificationAction(token) {
       const box = $('verify-banner');
+      if (!emailVerificationRequired()) {
+        banner('verify-banner');
+        return;
+      }
       if (!token) {
         box.className = 'banner show info';
         box.textContent = 'Secure mode is enabled. Demo verification links are hidden. If outbound email is not configured yet, ask the admin for a test access link.';
@@ -758,8 +770,13 @@
       if (!email) return banner('access-banner', 'Enter an email address to request access.', 'error');
       try {
         const r = await req('/register', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) });
+        await loadConfig();
         banner('access-banner', r.message || 'Request received.');
         renderVerificationAction(r.verification_token);
+        if (r.status === 'active') {
+          banner('search-banner', 'Signup complete. Search and preview are now available.');
+          await activateTab('search');
+        }
       } catch (err) {
         banner('access-banner', err.message, 'error');
       }
@@ -776,7 +793,7 @@
         renderLibrary();
         banner('verify-banner');
         await loadConfig();
-        banner('access-banner', 'Signed out. Verify your email again to restore service access.');
+        banner('access-banner', emailVerificationRequired() ? 'Signed out. Verify your email again to restore service access.' : 'Signed out. Enter your email again to restore service access.');
         await activateTab('access');
       } catch (err) {
         banner('access-banner', err.message, 'error');

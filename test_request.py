@@ -9,7 +9,7 @@ from fastapi import HTTPException, Response
 from starlette.requests import Request
 
 import main
-from podify.auth import ACCESS_SESSION_COOKIE, require_active_user
+from podify.auth import ACCESS_SESSION_COOKIE, require_active_user, require_admin
 from test_search import FakeYoutubeDL
 
 
@@ -67,40 +67,36 @@ class RequestFlowTests(unittest.TestCase):
         os.close(fd)
         os.environ["PODIFY_STATE_PATH"] = self.state_path
         os.environ["PODIFY_MAX_ACTIVE_USERS"] = "1"
-        os.environ["PODIFY_EXPOSE_DEMO_VERIFICATION"] = "1"
         main.save_state(main.clone_default_state())
 
     def tearDown(self):
         os.environ.pop("PODIFY_STATE_PATH", None)
+        os.environ.pop("PODIFY_ADMIN_TOKEN", None)
+        os.environ.pop("PODIFY_ADMIN_PASSWORD", None)
         os.environ.pop("PODIFY_MAX_ACTIVE_USERS", None)
+        os.environ.pop("PODIFY_REQUIRE_EMAIL_VERIFICATION", None)
         os.environ.pop("PODIFY_EXPOSE_DEMO_VERIFICATION", None)
         if os.path.exists(self.state_path):
             os.remove(self.state_path)
 
-    def test_registration_cap_and_admin_approval_flow(self):
-        first_request = asyncio.run(main.request_access({"email": "first@example.com"}))
-        first_response = Response()
-        first_verification = asyncio.run(
-            main.verify_access_request(
-                first_request["verification_token"],
-                first_response,
-                build_request("/register/verify"),
+    def register_user(self, email: str) -> tuple[dict, str | None]:
+        response = Response()
+        result = asyncio.run(
+            main.request_access(
+                {"email": email},
+                response,
+                build_request("/register", method="POST"),
             )
         )
-        self.assertEqual(first_verification["status"], "active")
-        self.assertTrue(response_cookie_value(first_response, ACCESS_SESSION_COOKIE))
+        return result, response_cookie_value(response, ACCESS_SESSION_COOKIE)
 
-        second_request = asyncio.run(main.request_access({"email": "second@example.com"}))
-        second_response = Response()
-        second_verification = asyncio.run(
-            main.verify_access_request(
-                second_request["verification_token"],
-                second_response,
-                build_request("/register/verify"),
-            )
-        )
-        self.assertEqual(second_verification["status"], "waitlisted")
-        second_cookie = response_cookie_value(second_response, ACCESS_SESSION_COOKIE)
+    def test_registration_cap_and_admin_approval_flow(self):
+        first_request, first_cookie = self.register_user("first@example.com")
+        self.assertEqual(first_request["status"], "active")
+        self.assertTrue(first_cookie)
+
+        second_request, second_cookie = self.register_user("second@example.com")
+        self.assertEqual(second_request["status"], "waitlisted")
         self.assertTrue(second_cookie)
         with self.assertRaises(HTTPException) as waitlisted_access:
             require_active_user(
@@ -118,6 +114,11 @@ class RequestFlowTests(unittest.TestCase):
         approval_result = asyncio.run(main.admin_approve_user({"email": "second@example.com"}))
         self.assertEqual(approval_result["status"], "approved")
         self.assertEqual(approval_result["user"]["status"], "active")
+
+        current_user = require_active_user(
+            build_request("/search", cookies={ACCESS_SESSION_COOKIE: second_cookie})
+        )
+        self.assertEqual(current_user["email"], "second@example.com")
 
     def test_dmca_notice_removes_video_from_library(self):
         add_result = asyncio.run(main.add_to_library(LIBRARY_VIDEO))
@@ -152,25 +153,18 @@ class RequestFlowTests(unittest.TestCase):
         self.assertEqual(dmca_info["blocked_videos"][0]["video_id"], LIBRARY_VIDEO["video_id"])
 
     @patch("main.yt_dlp.YoutubeDL", FakeYoutubeDL)
-    def test_service_routes_require_verified_session(self):
+    def test_service_routes_require_signed_in_session(self):
         with self.assertRaises(HTTPException) as unauthenticated_search:
             require_active_user(build_request("/search"))
         self.assertEqual(unauthenticated_search.exception.status_code, 401)
 
-        request = asyncio.run(main.request_access({"email": "viewer@example.com"}))
-        verify_response = Response()
-        verification = asyncio.run(
-            main.verify_access_request(
-                request["verification_token"],
-                verify_response,
-                build_request("/register/verify"),
-            )
-        )
-        self.assertEqual(verification["status"], "active")
-        cookie_value = response_cookie_value(verify_response, ACCESS_SESSION_COOKIE)
+        signup, cookie_value = self.register_user("viewer@example.com")
+        self.assertEqual(signup["status"], "active")
         self.assertTrue(cookie_value)
 
-        config = asyncio.run(main.get_config(build_request("/config", cookies={ACCESS_SESSION_COOKIE: cookie_value})))
+        config = asyncio.run(
+            main.get_config(build_request("/config", cookies={ACCESS_SESSION_COOKIE: cookie_value}))
+        )
         self.assertTrue(config["access"]["service_access"])
         self.assertEqual(config["access"]["user"]["email"], "viewer@example.com")
 
@@ -221,10 +215,22 @@ class RequestFlowTests(unittest.TestCase):
         )
         self.assertEqual(current_user["email"], "tester@example.com")
 
-    def test_secure_mode_hides_demo_verification_token(self):
+    def test_admin_token_trims_surrounding_whitespace(self):
+        os.environ["PODIFY_ADMIN_TOKEN"] = "  podifyadmin123  "
+
+        require_admin("podifyadmin123")
+
+    def test_optional_verification_mode_hides_demo_verification_token(self):
+        os.environ["PODIFY_REQUIRE_EMAIL_VERIFICATION"] = "1"
         os.environ["PODIFY_EXPOSE_DEMO_VERIFICATION"] = "0"
 
-        request = asyncio.run(main.request_access({"email": "secure@example.com"}))
+        request = asyncio.run(
+            main.request_access(
+                {"email": "secure@example.com"},
+                Response(),
+                build_request("/register", method="POST"),
+            )
+        )
 
         self.assertEqual(request["status"], "pending_verification")
         self.assertNotIn("verification_token", request)
@@ -233,6 +239,7 @@ class RequestFlowTests(unittest.TestCase):
         state = main.load_state()
         user = main.find_user(state, "secure@example.com")
         self.assertIsNotNone(user)
+        self.assertFalse(user.get("email_verified"))
         self.assertIsNone(user.get("verification_token"))
         self.assertTrue(user.get("verification_token_hash"))
 

@@ -82,7 +82,15 @@ def get_max_active_users() -> int:
 
 
 def get_admin_token() -> str:
-    return get_setting("PODIFY_ADMIN_TOKEN") or ""
+    return (
+        get_setting("PODIFY_ADMIN_TOKEN")
+        or get_setting("PODIFY_ADMIN_PASSWORD")
+        or ""
+    ).strip()
+
+
+def is_email_verification_required() -> bool:
+    return get_bool_setting("PODIFY_REQUIRE_EMAIL_VERIFICATION", default=False)
 
 
 def is_demo_verification_enabled() -> bool:

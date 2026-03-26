@@ -15,7 +15,11 @@ from podify.auth import (
     issue_verification_token,
     hash_verification_token,
 )
-from podify.config import get_max_active_users, is_demo_verification_enabled
+from podify.config import (
+    get_max_active_users,
+    is_demo_verification_enabled,
+    is_email_verification_required,
+)
 from podify.services.users import (
     active_user_count,
     ensure_not_blocked_email,
@@ -26,6 +30,8 @@ from podify.services.users import (
 from podify.state import STATE_LOCK, load_state_unlocked, save_state_unlocked, utc_now
 
 router = APIRouter()
+
+
 def find_user_by_verification_token(state: dict[str, Any], token: str) -> dict[str, Any] | None:
     token_hash = hash_verification_token(token)
     for candidate in state["users"]:
@@ -41,7 +47,11 @@ def find_user_by_verification_token(state: dict[str, Any], token: str) -> dict[s
 
 
 @router.post("/register")
-async def request_access(payload: dict[str, Any] = Body(...)) -> dict[str, Any]:
+async def request_access(
+    payload: dict[str, Any] = Body(...),
+    response: Response = None,
+    request: Request = None,
+) -> dict[str, Any]:
     email = validate_email(payload.get("email", ""))
 
     with STATE_LOCK:
@@ -49,7 +59,6 @@ async def request_access(payload: dict[str, Any] = Body(...)) -> dict[str, Any]:
         ensure_not_blocked_email(state, email)
         user = find_user(state, email)
         now = utc_now()
-        already_verified = bool(user and user.get("email_verified"))
         if not user:
             user = {
                 "email": email,
@@ -57,29 +66,57 @@ async def request_access(payload: dict[str, Any] = Body(...)) -> dict[str, Any]:
             }
             state["users"].append(user)
 
-        token = issue_verification_token(user)
-        if not already_verified:
-            user["status"] = "pending_verification"
-            user["email_verified"] = False
+        if is_email_verification_required():
+            already_verified = bool(user.get("email_verified"))
+            token = issue_verification_token(user)
+            if not already_verified:
+                clear_access_session(user)
+                user["status"] = "pending_verification"
+                user["email_verified"] = False
+            save_state_unlocked(state)
+
+            if is_demo_verification_enabled():
+                return {
+                    "status": "pending_verification",
+                    "message": (
+                        "Verification is required before service access is granted. Demo verification "
+                        "is enabled in this environment, so the token is exposed for local testing."
+                    ),
+                    "verification_url": f"/register/verify?token={token}",
+                    "verification_token": token,
+                }
+
+            return {
+                "status": "pending_verification",
+                "message": (
+                    "Verification is required before service access is granted. Demo verification is "
+                    "disabled in secure mode, so the verification token is not exposed by the API."
+                ),
+            }
+
+        user["verification_token_hash"] = None
+        user["verification_token"] = None
+        user["requested_at"] = now
+        user["email_verified"] = True
+        user["verified_at"] = user.get("verified_at") or now
+        if user.get("status") == "active" or active_user_count(state) < get_max_active_users():
+            user["status"] = "active"
+            message = "Signup complete. Access is now active."
+        else:
+            user["status"] = "waitlisted"
+            message = "Signup complete, but the 1,000-user cap has been reached. You are waitlisted."
+        user["updated_at"] = now
+        session_token = issue_access_session(user)
         save_state_unlocked(state)
 
-    if is_demo_verification_enabled():
-        return {
-            "status": "pending_verification",
-            "message": (
-                "Verification is required before service access is granted. Demo verification "
-                "is enabled in this environment, so the token is exposed for local testing."
-            ),
-            "verification_url": f"/register/verify?token={token}",
-            "verification_token": token,
-        }
+    if response and request:
+        apply_access_session_cookie(response, session_token, secure=request.url.scheme == "https")
 
     return {
-        "status": "pending_verification",
-        "message": (
-            "Verification is required before service access is granted. Demo verification is "
-            "disabled in secure mode, so the token is not exposed by the API."
-        ),
+        "status": user["status"],
+        "message": message,
+        "user": public_user(user),
+        "registration_open": active_user_count(state) < get_max_active_users(),
     }
 
 
@@ -109,13 +146,13 @@ async def verify_access_request(token: str, response: Response, request: Request
         session_token = issue_access_session(user)
         save_state_unlocked(state)
 
-        apply_access_session_cookie(response, session_token, secure=request.url.scheme == "https")
-        return {
-            "status": user["status"],
-            "message": message,
-            "user": public_user(user),
-            "registration_open": active_user_count(state) < get_max_active_users(),
-        }
+    apply_access_session_cookie(response, session_token, secure=request.url.scheme == "https")
+    return {
+        "status": user["status"],
+        "message": message,
+        "user": public_user(user),
+        "registration_open": active_user_count(state) < get_max_active_users(),
+    }
 
 
 @router.post("/session/logout")

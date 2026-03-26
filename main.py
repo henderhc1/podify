@@ -9,6 +9,7 @@ from podify.config import (
     build_default_state_template,
     get_admin_token,
     get_max_active_users,
+    is_email_verification_required,
     get_setting,
     get_state_path,
 )
@@ -117,6 +118,7 @@ __all__ = [
     "get_library",
     "get_playback",
     "get_max_active_users",
+    "is_email_verification_required",
     "get_setting",
     "get_state_path",
     "is_blocked_video",

@@ -7,12 +7,18 @@ from typing import Any
 
 from fastapi import Header, HTTPException, Request, Response
 
-from podify.config import get_admin_token
+from podify.config import get_admin_token, is_email_verification_required
 from podify.services.users import find_user, normalize_email, public_user
 from podify.state import utc_now
 
 ACCESS_SESSION_COOKIE = "podify_access"
 ACCESS_SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 30
+
+
+def access_signup_prompt() -> str:
+    if is_email_verification_required():
+        return "Verify your email before using Podify."
+    return "Sign up with a valid email before using Podify."
 
 
 def hash_access_session_token(token: str) -> str:
@@ -82,25 +88,33 @@ def get_session_user(state: dict[str, Any], request: Request) -> dict[str, Any] 
 
 def describe_access_state(state: dict[str, Any], request: Request) -> dict[str, Any]:
     user = get_session_user(state, request)
+    verification_required = is_email_verification_required()
     if not user:
         return {
             "authenticated": False,
             "service_access": False,
-            "reason": "Verify your email before using Podify.",
+            "reason": access_signup_prompt(),
             "user": None,
         }
 
     normalized_email = normalize_email(user.get("email", ""))
     blocked = normalized_email in state["blocked_emails"] or user.get("status") == "blocked"
-    service_access = bool(user.get("email_verified")) and user.get("status") == "active" and not blocked
+    service_access = (
+        user.get("status") == "active"
+        and not blocked
+        and (bool(user.get("email_verified")) or not verification_required)
+    )
 
     reason = ""
     if blocked:
         reason = "This account has been blocked."
-    elif not user.get("email_verified"):
+    elif verification_required and not user.get("email_verified"):
         reason = "Verify your email before using Podify."
     elif user.get("status") == "waitlisted":
-        reason = "Your email is verified, but your account is still waitlisted."
+        if verification_required:
+            reason = "Your email is verified, but your account is still waitlisted."
+        else:
+            reason = "Your signup is valid, but your account is still waitlisted."
     elif user.get("status") != "active":
         reason = "An active Podify account is required before using the service."
 
@@ -120,18 +134,22 @@ def require_active_user(request: Request) -> dict[str, Any]:
     if not user:
         raise HTTPException(
             status_code=401,
-            detail="Email verification and an active Podify account are required before using the service.",
+            detail=f"{access_signup_prompt()} An active Podify account is required before using the service.",
         )
 
     normalized_email = normalize_email(user.get("email", ""))
     if normalized_email in state["blocked_emails"] or user.get("status") == "blocked":
         raise HTTPException(status_code=403, detail="This account has been blocked.")
-    if not user.get("email_verified"):
+    if is_email_verification_required() and not user.get("email_verified"):
         raise HTTPException(status_code=403, detail="Verify your email before using Podify.")
     if user.get("status") == "waitlisted":
         raise HTTPException(
             status_code=403,
-            detail="Your email is verified, but your account is still waitlisted.",
+            detail=(
+                "Your email is verified, but your account is still waitlisted."
+                if is_email_verification_required()
+                else "Your signup is valid, but your account is still waitlisted."
+            ),
         )
     if user.get("status") != "active":
         raise HTTPException(
@@ -147,5 +165,6 @@ def require_admin(x_admin_token: str | None = Header(default=None)) -> None:
             status_code=503,
             detail="Admin API is disabled until PODIFY_ADMIN_TOKEN is configured.",
         )
-    if x_admin_token != admin_token:
+    provided_token = str(x_admin_token or "").strip()
+    if not provided_token or not hmac.compare_digest(provided_token, admin_token):
         raise HTTPException(status_code=401, detail="A valid admin token is required.")

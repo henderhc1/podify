@@ -1,14 +1,14 @@
 # Podify
 
-Podify is a non-commercial YouTube discovery and preview tool. Users can request access with an email address, verify that email, preview videos inside a custom interface, save them to a lightweight library, and then continue to YouTube through clear attribution links.
+Podify is a non-commercial YouTube discovery and preview tool. Users can request access with an email address, sign in through the access flow, preview videos inside a custom interface, save them to a lightweight library, and then continue to YouTube through clear attribution links.
 
 ## Product Direction
 
 - Search returns up to 10 YouTube results per query.
 - Preview playback is resolved on demand with `yt-dlp` and rendered in Podify's existing HTML5 player UI.
-- Search, playback, and library access are gated behind verified active-user sessions.
+- Search, playback, and library access are gated behind active-user sessions.
 - Every result and saved item includes `Watch on YouTube - Support the Creator`.
-- Registration supports email verification, waitlisting, and a hard active-user cap.
+- Registration supports immediate valid-email signup by default, optional email verification mode, waitlisting, and a hard active-user cap.
 - Admin controls support adding, approving, deleting, and blocking users by email.
 - DMCA notice handling blocks videos from preview and removes them from the saved library.
 - Legal disclaimers are shown in the UI to keep the product framed as discovery and preview.
@@ -53,6 +53,7 @@ Supported settings:
 ```powershell
 $env:PODIFY_MAX_ACTIVE_USERS="1000"
 $env:PODIFY_ADMIN_TOKEN="replace-me"
+$env:PODIFY_REQUIRE_EMAIL_VERIFICATION="0"
 $env:PODIFY_EXPOSE_DEMO_VERIFICATION="0"
 $env:PODIFY_DMCA_AGENT_NAME="Your DMCA Agent"
 $env:PODIFY_DMCA_AGENT_EMAIL="dmca@example.com"
@@ -61,26 +62,28 @@ $env:PODIFY_STATE_PATH="data/state.json"
 ```
 
 Set `PODIFY_ADMIN_TOKEN` before using the admin API locally. Admin routes stay disabled until that token is configured.
-`PODIFY_EXPOSE_DEMO_VERIFICATION` is disabled by default. Leave it off for secure behavior; only turn it on for local demo testing.
+`PODIFY_REQUIRE_EMAIL_VERIFICATION` is disabled by default right now, so valid emails can sign up immediately. Turn it on later when a real outbound email flow is ready.
+`PODIFY_EXPOSE_DEMO_VERIFICATION` only matters when email verification is enabled. Leave it off for secure behavior; only turn it on for local demo testing.
 
 ## Access Control
 
 Podify's public landing page and DMCA flow stay visible, but the service itself is not open access anymore:
 
 - `POST /register` starts the access flow for a given email.
-- `GET /register/verify?token=...` verifies ownership of that email and issues an HTTP-only access cookie.
-- `GET /search`, `GET /playback/{video_id}`, and all `/library` routes require a verified user with `active` status.
-- Waitlisted users can verify their email, but they still cannot use the service until promoted to `active`.
+- With the default config, valid emails are accepted immediately and `POST /register` issues the normal HTTP-only access cookie.
+- `GET /register/verify?token=...` is still available for the optional verification mode and future real email delivery.
+- `GET /search`, `GET /playback/{video_id}`, and all `/library` routes require a signed-in user with `active` status.
+- Waitlisted users can sign in and see their state, but they still cannot use the service until promoted to `active`.
 - `POST /session/logout` clears the browser session cookie and invalidates the stored session token.
 
 ## Testing Users Before Real Email Delivery
 
-Until a real outbound email provider is wired up, testers can still get in without opening the site to everyone:
+Until a real outbound email provider is wired up, testers can sign up directly with valid emails. The admin-issued link flow is still available if you later re-enable verification mode or need to hand a tester a direct sign-in path:
 
 - An admin can add or approve a user as `active`.
-- The admin can then generate a one-time test access link from the admin UI or `POST /admin/users/access-link`.
-- Sharing that link with the tester lets them complete verification and receive the normal HTTP-only access session cookie.
-- This keeps the service gated while still making beta testing practical.
+- Users can then sign up directly with that email and receive the normal access session.
+- If verification mode is enabled later, the admin can still generate a one-time test access link from the admin UI or `POST /admin/users/access-link`.
+- That keeps the future verification path testable without opening the service completely.
 
 ## Private Files And `.gitignore`
 
@@ -95,8 +98,8 @@ The ignore rules keep these local-only by default:
 ## Security Defaults
 
 - Admin routes are disabled until `PODIFY_ADMIN_TOKEN` is explicitly configured.
-- Registration verification tokens are hashed in state and hidden from API responses by default.
-- Browser access sessions are stored as hashed, server-validated tokens and issued only after email verification.
+- Registration verification tokens are hashed in state when verification mode is enabled.
+- Browser access sessions are stored as hashed, server-validated tokens and issued after signup or verification.
 - Direct URL lookups only accept YouTube URLs.
 - Library, playback, thumbnail, and watch URLs are derived from validated YouTube video IDs instead of trusting client-supplied URLs.
 - Security headers are added to responses to reduce framing, sniffing, and cross-origin policy risks.
