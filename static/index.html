@@ -669,9 +669,13 @@
         ? playback.sources
         : (playback.stream_url ? [{ url: playback.stream_url, mime_type: playback.mime_type || '' }] : []);
       renderQualityPicker(currentPlaybackSources);
+      if (playback.preview_available === false || currentPlaybackSources.length === 0) {
+        banner('modal-video-banner', playback.preview_error || 'Preview unavailable. Use Watch on YouTube instead.', 'error');
+        return;
+      }
+      banner('modal-video-banner');
       setPlaybackSource(0);
 
-      banner('modal-video-banner');
       if (playback.video_url) $('modal-youtube').href = playback.video_url;
     }
 

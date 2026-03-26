@@ -10,7 +10,11 @@ from urllib.parse import parse_qs, urlparse
 import yt_dlp
 from fastapi import HTTPException
 
-from podify.config import SEARCH_TIMEOUT_SECONDS, get_ytdlp_cookie_file
+from podify.config import (
+    SEARCH_TIMEOUT_SECONDS,
+    get_ytdlp_cookie_file,
+    get_ytdlp_cookies_from_browser,
+)
 from podify.state import utc_now
 
 YOUTUBE_ID_RE = re.compile(
@@ -27,6 +31,7 @@ ALLOWED_YOUTUBE_HOSTS = {
     "www.youtube-nocookie.com",
 }
 PLAYBACK_CACHE_TTL_SECONDS = 300
+PLAYBACK_ERROR_CACHE_TTL_SECONDS = 30
 PLAYBACK_CACHE: dict[str, dict[str, Any]] = {}
 PLAYBACK_CACHE_LOCK = Lock()
 YTDLP_BOT_CHECK_MARKERS = (
@@ -335,8 +340,13 @@ def get_cached_playback_info(video_id: str) -> dict[str, Any] | None:
         return dict(cached["payload"])
 
 
-def cache_playback_info(video_id: str, payload: dict[str, Any]) -> dict[str, Any]:
-    expires_at = int(time.time()) + PLAYBACK_CACHE_TTL_SECONDS
+def cache_playback_info(
+    video_id: str,
+    payload: dict[str, Any],
+    *,
+    ttl_seconds: int = PLAYBACK_CACHE_TTL_SECONDS,
+) -> dict[str, Any]:
+    expires_at = int(time.time()) + max(1, int(ttl_seconds))
     cached_payload = {**payload, "expires_at": expires_at}
     with PLAYBACK_CACHE_LOCK:
         PLAYBACK_CACHE[video_id] = {
@@ -371,6 +381,10 @@ def build_ydl_options(*, flat_search: bool = False) -> dict[str, Any]:
     cookie_file = get_ytdlp_cookie_file()
     if cookie_file:
         options["cookiefile"] = cookie_file
+    else:
+        browser_cookies = get_ytdlp_cookies_from_browser()
+        if browser_cookies:
+            options["cookiesfrombrowser"] = browser_cookies
     return options
 
 
@@ -385,11 +399,37 @@ def ytdlp_operator_guidance(context: str) -> str:
             f"{context} YouTube is still challenging this server even with cookies configured. "
             "Refresh the yt-dlp cookies and try again."
         )
+    if get_ytdlp_cookies_from_browser():
+        return (
+            f"{context} YouTube is still challenging this server while using browser cookies. "
+            "Refresh the browser session, then retry."
+        )
     return (
         f"{context} YouTube is challenging this server IP. Configure "
-        "PODIFY_YTDLP_COOKIE_FILE or PODIFY_YTDLP_COOKIE_TEXT so yt-dlp can use authenticated "
-        "YouTube cookies on the server."
+        "PODIFY_YTDLP_COOKIE_FILE, PODIFY_YTDLP_COOKIE_TEXT, or "
+        "PODIFY_YTDLP_COOKIES_FROM_BROWSER so yt-dlp can use authenticated YouTube cookies."
     )
+
+
+def build_unavailable_playback_payload(video_id: str, reason: str) -> dict[str, Any]:
+    return {
+        "video_id": video_id,
+        "title": "Preview temporarily unavailable",
+        "channel": "Unknown creator",
+        "duration": "Unknown",
+        "thumbnail_url": f"https://i.ytimg.com/vi/{video_id}/hqdefault.jpg",
+        "video_url": canonical_watch_url(video_id),
+        "playback_url": build_playback_api_url(video_id),
+        "description": (
+            "Podify could not resolve a browser-playable stream right now. "
+            "Use Watch on YouTube to continue."
+        ),
+        "stream_url": "",
+        "mime_type": None,
+        "sources": [],
+        "preview_available": False,
+        "preview_error": reason,
+    }
 
 
 def resolve_playback_info(video_id_or_url: str) -> dict[str, Any]:
@@ -417,10 +457,12 @@ def resolve_playback_info(video_id_or_url: str) -> dict[str, Any]:
         raise
     except Exception as exc:
         if is_ytdlp_bot_check_error(exc):
-            raise HTTPException(
-                status_code=503,
-                detail=ytdlp_operator_guidance("Preview lookup is temporarily unavailable."),
-            ) from exc
+            guidance = ytdlp_operator_guidance("Preview lookup is temporarily unavailable.")
+            return cache_playback_info(
+                video_id,
+                build_unavailable_playback_payload(video_id, guidance),
+                ttl_seconds=PLAYBACK_ERROR_CACHE_TTL_SECONDS,
+            )
         raise HTTPException(
             status_code=500,
             detail="Playback lookup failed. Please try another video or use Watch on YouTube.",
@@ -448,6 +490,8 @@ def resolve_playback_info(video_id_or_url: str) -> dict[str, Any]:
         "stream_url": sources[0]["url"],
         "mime_type": sources[0]["mime_type"],
         "sources": sources,
+        "preview_available": True,
+        "preview_error": "",
     }
     return cache_playback_info(video_id, payload)
 

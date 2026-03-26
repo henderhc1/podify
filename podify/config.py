@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib
 import os
+import re
 from pathlib import Path
 from typing import Any
 
@@ -48,6 +49,14 @@ def load_local_settings() -> dict[str, Any]:
 
 
 LOCAL_SETTINGS = load_local_settings()
+COOKIE_BROWSER_SETTING_RE = re.compile(
+    r"""(?x)
+    (?P<name>[^+:]+)
+    (?:\s*\+\s*(?P<keyring>[^:]+))?
+    (?:\s*:\s*(?!:)(?P<profile>.+?))?
+    (?:\s*::\s*(?P<container>.+))?
+    """
+)
 
 
 def get_bool_setting(name: str, default: bool = False) -> bool:
@@ -103,6 +112,29 @@ def get_ytdlp_cookie_file() -> str | None:
     content = str(cookie_text).replace("\r\n", "\n").strip()
     cookie_path.write_text(f"{content}\n", encoding="utf-8")
     return str(cookie_path)
+
+
+def get_ytdlp_cookies_from_browser() -> tuple[str, str | None, str | None, str | None] | None:
+    raw_value = (
+        get_setting("PODIFY_YTDLP_COOKIES_FROM_BROWSER")
+        or get_setting("PODIFY_YTDLP_COOKIE_BROWSER")
+        or ""
+    ).strip()
+    if not raw_value:
+        return None
+
+    match = COOKIE_BROWSER_SETTING_RE.fullmatch(raw_value)
+    if not match:
+        return None
+
+    browser_name = str(match.group("name") or "").strip().lower()
+    if not browser_name:
+        return None
+
+    profile = str(match.group("profile") or "").strip() or None
+    keyring = str(match.group("keyring") or "").strip().upper() or None
+    container = str(match.group("container") or "").strip() or None
+    return (browser_name, profile, keyring, container)
 
 
 def is_email_verification_required() -> bool:

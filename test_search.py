@@ -7,6 +7,7 @@ from unittest.mock import patch
 from fastapi import HTTPException
 
 import main
+from podify.services import videos as video_services
 
 
 def make_entry(index: int) -> dict:
@@ -110,9 +111,12 @@ class SearchTests(unittest.TestCase):
         os.close(fd)
         os.environ["PODIFY_STATE_PATH"] = self.state_path
         main.save_state(main.clone_default_state())
+        with video_services.PLAYBACK_CACHE_LOCK:
+            video_services.PLAYBACK_CACHE.clear()
 
     def tearDown(self):
         os.environ.pop("PODIFY_STATE_PATH", None)
+        os.environ.pop("PODIFY_YTDLP_COOKIES_FROM_BROWSER", None)
         if os.path.exists(self.state_path):
             os.remove(self.state_path)
 
@@ -157,6 +161,18 @@ class SearchTests(unittest.TestCase):
         self.assertEqual(FlatSearchYoutubeDL.last_options["extract_flat"], "in_playlist")
         self.assertTrue(FlatSearchYoutubeDL.last_options["lazy_playlist"])
 
+    @patch("main.yt_dlp.YoutubeDL", FlatSearchYoutubeDL)
+    def test_search_supports_browser_cookie_configuration(self):
+        os.environ["PODIFY_YTDLP_COOKIES_FROM_BROWSER"] = "chrome:Default"
+
+        results = asyncio.run(main.search("hello"))
+
+        self.assertEqual(len(results), 1)
+        self.assertEqual(
+            FlatSearchYoutubeDL.last_options["cookiesfrombrowser"],
+            ("chrome", "Default", None, None),
+        )
+
     @patch("main.yt_dlp.YoutubeDL", BotCheckYoutubeDL)
     def test_search_returns_operator_guidance_on_youtube_bot_check(self):
         with self.assertRaises(HTTPException) as blocked:
@@ -174,6 +190,16 @@ class SearchTests(unittest.TestCase):
         self.assertEqual(playback["mime_type"], "video/mp4")
         self.assertEqual(playback["playback_url"], "/playback/videoidx000")
         self.assertEqual(len(playback["sources"]), 2)
+        self.assertTrue(playback["preview_available"])
+
+    @patch("main.yt_dlp.YoutubeDL", BotCheckYoutubeDL)
+    def test_playback_degrades_gracefully_on_youtube_bot_check(self):
+        playback = asyncio.run(main.get_playback("videoidx000"))
+
+        self.assertFalse(playback["preview_available"])
+        self.assertEqual(playback["sources"], [])
+        self.assertEqual(playback["stream_url"], "")
+        self.assertIn("PODIFY_YTDLP_COOKIE_FILE", playback["preview_error"])
 
 
 if __name__ == "__main__":
