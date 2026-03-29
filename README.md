@@ -121,6 +121,22 @@ The ignore rules keep these local-only by default:
 
 Important: `.gitignore` prevents accidental commits. It does **not** prevent copying of code that is already committed and public. If you need real protection, use a private repository and an explicit license.
 
+## Fly.io Notes
+
+- `fly.toml` is included and uses the Nixpacks builder (`ghcr.io/railwayapp/nixpacks:latest`).
+- `nixpacks.toml` now sets an explicit start command: `uvicorn main:app --host 0.0.0.0 --port ${PORT:-8080}`.
+- Keep `requirements.txt` on `fastapi` + `uvicorn` (not the misspelled `fastapit[standard]` package name).
+- Set a real Fly app name in `fly.toml` before first deploy.
+- Deploy with:
+
+```powershell
+fly launch --no-deploy
+fly secrets set PODIFY_ADMIN_TOKEN="replace-me"
+fly deploy
+```
+
+- For persistent state across restarts/deploys, create and mount a Fly volume to `/app/data` and keep using the default `PODIFY_STATE_PATH=data/state.json`.
+
 ## Railway Notes
 
 - `main.py` remains the stable ASGI entrypoint, so existing `main:app` deployment commands keep working.
