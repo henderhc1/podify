@@ -565,7 +565,7 @@ def build_unavailable_playback_payload(video_id: str, reason: str) -> dict[str, 
         "video_url": canonical_watch_url(video_id),
         "playback_url": build_playback_api_url(video_id),
         "description": (
-            "Podify could not resolve a browser-playable stream right now. "
+            "Spreview could not resolve a browser-playable stream right now. "
             "Use Watch on YouTube to continue."
         ),
         "stream_url": "",

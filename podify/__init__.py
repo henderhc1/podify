@@ -1,1 +1,1 @@
-"""Podify package."""
+"""Spreview package."""

@@ -1,11 +1,11 @@
-# Podify
+# Spreview
 
-Podify is a non-commercial YouTube discovery and preview tool. Users can request access with an email address, sign in through the access flow, preview videos inside a custom interface, save them to a lightweight library, and then continue to YouTube through clear attribution links.
+Spreview is a non-commercial YouTube discovery and preview tool. Users can request access with an email address, sign in through the access flow, preview videos inside a custom interface, save them to a lightweight library, and then continue to YouTube through clear attribution links.
 
 ## Product Direction
 
 - Search returns up to 10 YouTube results per query.
-- Preview playback is resolved on demand with `yt-dlp` and rendered in Podify's existing HTML5 player UI.
+- Preview playback is resolved on demand with `yt-dlp` and rendered in Spreview's existing HTML5 player UI.
 - Search, playback, and library access are gated behind active-user sessions.
 - Every result and saved item includes `Watch on YouTube - Support the Creator`.
 - Registration supports immediate valid-email signup by default, optional email verification mode, waitlisting, and a hard active-user cap.
@@ -31,8 +31,8 @@ downloads/               Local scratch/download area (ignored except for .gitkee
 
 ## Preview Playback
 
-Podify keeps the current UI, but preview playback is resolved through `yt-dlp` instead of a YouTube iframe. When a user opens a preview, the backend resolves browser-playable source URLs for that specific YouTube video and returns them to the frontend player. Podify does not permanently store downloaded video files; playback URLs are resolved on demand and cached briefly in memory.
-Podify does not use the YouTube Data API for search or playback resolution.
+Spreview keeps the current UI, but preview playback is resolved through `yt-dlp` instead of a YouTube iframe. When a user opens a preview, the backend resolves browser-playable source URLs for that specific YouTube video and returns them to the frontend player. Spreview does not permanently store downloaded video files; playback URLs are resolved on demand and cached briefly in memory.
+Spreview does not use the YouTube Data API for search or playback resolution.
 
 ## Setup
 
@@ -47,7 +47,7 @@ Open `http://localhost:8000`.
 
 ## Configuration
 
-Podify reads configuration from environment variables first. If you want a private local-only Python config file, copy `podify/local_settings.py.example` to `podify/local_settings.py`. That file is intentionally ignored by Git.
+Spreview reads configuration from environment variables first. If you want a private local-only Python config file, copy `podify/local_settings.py.example` to `podify/local_settings.py`. That file is intentionally ignored by Git.
 
 Supported settings:
 
@@ -81,11 +81,11 @@ Set `PODIFY_ADMIN_TOKEN` before using the admin API locally. Admin routes stay d
 `PODIFY_YTDLP_BOTCHECK_RETRY_SLEEP_REQUESTS_SECONDS` controls the stricter retry profile pause after bot-check errors (default `1.0`).
 `PODIFY_YTDLP_FORCE_BOTCHECK_PROFILE=1` forces the stricter extractor profile on every request (useful for hosted environments with aggressive YouTube bot checks).
 `PODIFY_YTDLP_USER_AGENT` lets you override the default yt-dlp request user agent if you need to match a specific browser profile.
-Admins can also upload Netscape `cookies.txt` content directly from the Admin UI (`/admin/ytdlp/cookies`), which Podify stores as `data/yt-dlp-cookies.runtime.txt` and uses automatically when env cookie settings are not present.
+Admins can also upload Netscape `cookies.txt` content directly from the Admin UI (`/admin/ytdlp/cookies`), which Spreview stores as `data/yt-dlp-cookies.runtime.txt` and uses automatically when env cookie settings are not present.
 
 ## Access Control
 
-Podify's public landing page and DMCA flow stay visible, but the service itself is not open access anymore:
+Spreview's public landing page and DMCA flow stay visible, but the service itself is not open access anymore:
 
 - `POST /register` starts the access flow for a given email.
 - With the default config, valid emails are accepted immediately and `POST /register` issues the normal HTTP-only access cookie.
@@ -157,7 +157,7 @@ fly deploy
 - Raise `PODIFY_YTDLP_SLEEP_REQUESTS_SECONDS` (for example `0.75` to `1.5`) to slow extraction request bursts.
 - If needed, route egress differently with `PODIFY_YTDLP_PROXY` or `PODIFY_YTDLP_SOURCE_ADDRESS` (and/or move regions) so requests come from a different outbound path.
 - Cookie-based auth remains optional: `PODIFY_YTDLP_COOKIE_FILE`, `PODIFY_YTDLP_COOKIE_TEXT`, and `PODIFY_YTDLP_COOKIES_FROM_BROWSER` can still be used when your threat model permits it.
-- Playback now degrades gracefully when YouTube blocks stream extraction: Podify keeps the modal open, shows the reason, and preserves `Watch on YouTube - Support the Creator`.
+- Playback now degrades gracefully when YouTube blocks stream extraction: Spreview keeps the modal open, shows the reason, and preserves `Watch on YouTube - Support the Creator`.
 
 ## Tests
 

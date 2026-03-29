@@ -17,8 +17,8 @@ ACCESS_SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 30
 
 def access_signup_prompt() -> str:
     if is_email_verification_required():
-        return "Verify your email before using Podify."
-    return "Sign up with a valid email before using Podify."
+        return "Verify your email before using Spreview."
+    return "Sign up with a valid email before using Spreview."
 
 
 def hash_access_session_token(token: str) -> str:
@@ -109,14 +109,14 @@ def describe_access_state(state: dict[str, Any], request: Request) -> dict[str, 
     if blocked:
         reason = "This account has been blocked."
     elif verification_required and not user.get("email_verified"):
-        reason = "Verify your email before using Podify."
+        reason = "Verify your email before using Spreview."
     elif user.get("status") == "waitlisted":
         if verification_required:
             reason = "Your email is verified, but your account is still waitlisted."
         else:
             reason = "Your signup is valid, but your account is still waitlisted."
     elif user.get("status") != "active":
-        reason = "An active Podify account is required before using the service."
+        reason = "An active Spreview account is required before using the service."
 
     return {
         "authenticated": True,
@@ -134,14 +134,14 @@ def require_active_user(request: Request) -> dict[str, Any]:
     if not user:
         raise HTTPException(
             status_code=401,
-            detail=f"{access_signup_prompt()} An active Podify account is required before using the service.",
+            detail=f"{access_signup_prompt()} An active Spreview account is required before using the service.",
         )
 
     normalized_email = normalize_email(user.get("email", ""))
     if normalized_email in state["blocked_emails"] or user.get("status") == "blocked":
         raise HTTPException(status_code=403, detail="This account has been blocked.")
     if is_email_verification_required() and not user.get("email_verified"):
-        raise HTTPException(status_code=403, detail="Verify your email before using Podify.")
+        raise HTTPException(status_code=403, detail="Verify your email before using Spreview.")
     if user.get("status") == "waitlisted":
         raise HTTPException(
             status_code=403,
@@ -154,7 +154,7 @@ def require_active_user(request: Request) -> dict[str, Any]:
     if user.get("status") != "active":
         raise HTTPException(
             status_code=403,
-            detail="An active Podify account is required before using the service.",
+            detail="An active Spreview account is required before using the service.",
         )
     return user
 

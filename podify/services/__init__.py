@@ -1,1 +1,1 @@
-"""Service helpers for Podify."""
+"""Service helpers for Spreview."""

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Podify - Discovery and Preview</title>
+  <title>Spreview - Discovery and Preview</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@600;700&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
@@ -107,7 +107,7 @@
       <div class="brand">
         <div class="mark">PD</div>
         <div>
-          <h1>Podify</h1>
+          <h1>Spreview</h1>
           <div class="sub">Discovery first. Full viewing back on YouTube.</div>
         </div>
       </div>
@@ -120,7 +120,7 @@
       <article class="card">
         <span class="eyebrow">Preview and Attribution</span>
         <h2>Find videos worth watching, then send the full view home.</h2>
-        <p id="public-message">Podify is a non-commercial discovery layer for YouTube videos. Search, save to your library, preview on-site, then continue on YouTube with visible attribution.</p>
+        <p id="public-message">Spreview is a non-commercial discovery layer for YouTube videos. Search, save to your library, preview on-site, then continue on YouTube with visible attribution.</p>
         <div class="stats">
           <div class="stat"><strong>10 results</strong><span class="soft">Each search goes deeper.</span></div>
           <div class="stat"><strong>On-site watch</strong><span class="soft">Saved library items stay watchable here.</span></div>
@@ -130,13 +130,13 @@
       <div class="stack">
         <article class="card">
           <h3>User cap</h3>
-          <p>Podify stays capped at 1,000 active users with admin approval, deletion, and email blocking controls.</p>
+          <p>Spreview stays capped at 1,000 active users with admin approval, deletion, and email blocking controls.</p>
           <p style="margin-top:.8rem"><strong id="cap-detail">0 / 1000 active users</strong><br><span class="soft" id="cap-state">Checking registration status...</span></p>
         </article>
         <article class="card">
           <h3>DMCA response</h3>
           <p>Flagged videos are blocked from search and removed from the saved preview library.</p>
-          <p style="margin-top:.8rem"><strong id="dmca-agent">Pending registration</strong><br><span class="soft" id="dmca-email">dmca@podify.com</span></p>
+          <p style="margin-top:.8rem"><strong id="dmca-agent">Pending registration</strong><br><span class="soft" id="dmca-email">dmca@spreview.com</span></p>
         </article>
       </div>
     </section>
@@ -155,7 +155,7 @@
           <div class="head">
             <div>
               <h3>Search YouTube</h3>
-              <div class="soft">Paste a YouTube URL or type a query. Podify returns up to 10 preview candidates.</div>
+              <div class="soft">Paste a YouTube URL or type a query. Spreview returns up to 10 preview candidates.</div>
             </div>
           </div>
           <form class="row" id="search-form">
@@ -182,7 +182,7 @@
         <div class="head">
           <div>
             <h3>Saved library</h3>
-            <div class="soft">Videos added here remain watchable inside Podify.</div>
+            <div class="soft">Videos added here remain watchable inside Spreview.</div>
           </div>
           <div class="count" id="library-count">0 saved previews</div>
         </div>
@@ -213,7 +213,7 @@
         </article>
         <aside class="panel">
           <h3>Registration disclaimer</h3>
-          <p id="registration-disclaimer">By registering, you agree to use Podify only for discovery and preview purposes. Support creators by watching full content on YouTube.</p>
+          <p id="registration-disclaimer">By registering, you agree to use Spreview only for discovery and preview purposes. Support creators by watching full content on YouTube.</p>
           <hr>
           <div class="quad access-quad">
             <div class="mini-card"><span>Active users</span><strong id="active-users">0</strong></div>
@@ -234,7 +234,7 @@
               <div class="soft">Valid notices block videos from preview and receive a response within the published window.</div>
             </div>
           </div>
-          <p>Copyright holders can contact <strong id="dmca-contact-email">dmca@podify.com</strong>. Agent: <strong id="dmca-contact-name">Pending registration</strong>. Target response window: <strong id="dmca-window">48 hours</strong>.</p>
+          <p>Copyright holders can contact <strong id="dmca-contact-email">dmca@spreview.com</strong>. Agent: <strong id="dmca-contact-name">Pending registration</strong>. Target response window: <strong id="dmca-window">48 hours</strong>.</p>
           <hr>
           <h3>Submit a takedown notice</h3>
           <form id="dmca-form" class="list" style="margin-top:1rem">
@@ -372,7 +372,7 @@
 
     <footer>
       <strong>Footer disclaimer</strong>
-      <p id="footer-disclaimer">Podify is a non-commercial discovery tool. All content belongs to its original creators. Full viewing is intended to occur on YouTube with ads. This tool does not store video files or redistribute content. Podify is not affiliated with YouTube or Google.</p>
+      <p id="footer-disclaimer">Spreview is a non-commercial discovery tool. All content belongs to its original creators. Full viewing is intended to occur on YouTube with ads. This tool does not store video files or redistribute content. Spreview is not affiliated with YouTube or Google.</p>
     </footer>
   </main>
 
@@ -449,8 +449,8 @@
 
     const emailVerificationRequired = () => Boolean(config && config.security && config.security.email_verification_required);
     const accessPromptMessage = () => emailVerificationRequired()
-      ? 'Verify your email before using Podify.'
-      : 'Sign up with a valid email before using Podify.';
+      ? 'Verify your email before using Spreview.'
+      : 'Sign up with a valid email before using Spreview.';
     const accessTabPromptMessage = () => emailVerificationRequired()
       ? 'Verify your email in the Access tab before searching or previewing videos.'
       : 'Use the Access tab to sign up with a valid email before searching or previewing videos.';
@@ -609,7 +609,7 @@
     function renderLibrary() {
       $('library-count').textContent = `${library.length} saved previews`;
       $('saved-count').textContent = library.length;
-      $('library-list').innerHTML = library.length ? library.map((v, i) => videoCard(v, i, 'library')).join('') : '<div class="empty">Save videos from search to keep a watchable preview library inside Podify.</div>';
+      $('library-list').innerHTML = library.length ? library.map((v, i) => videoCard(v, i, 'library')).join('') : '<div class="empty">Save videos from search to keep a watchable preview library inside Spreview.</div>';
     }
 
     function renderBlocked() {
@@ -790,7 +790,7 @@
       try {
         const r = await req('/library', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(v) });
         await Promise.all([loadLibrary(), loadConfig()]);
-        banner('search-banner', r.status === 'exists' ? 'This video is already in the library.' : 'Saved to the library. It remains watchable inside Podify.');
+        banner('search-banner', r.status === 'exists' ? 'This video is already in the library.' : 'Saved to the library. It remains watchable inside Spreview.');
         await activateTab('library');
       } catch (err) {
         if (isProtectedAccessError(err)) {

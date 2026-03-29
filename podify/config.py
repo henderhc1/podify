@@ -6,7 +6,7 @@ import re
 from pathlib import Path
 from typing import Any
 
-APP_TITLE = "Podify"
+APP_TITLE = "Spreview"
 APP_DESCRIPTION = "A non-commercial YouTube discovery, preview, and attribution tool."
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
@@ -19,18 +19,18 @@ YTDLP_RUNTIME_COOKIE_FILE = DATA_DIR / "yt-dlp-cookies.runtime.txt"
 
 DISCLAIMER_COPY = {
     "public_message": (
-        "Podify is a non-commercial discovery tool limited to 1,000 users so it stays "
+        "Spreview is a non-commercial discovery tool limited to 1,000 users so it stays "
         "small, educational, and focused on driving viewers back to YouTube."
     ),
     "footer": (
-        "Podify is a non-commercial discovery tool. All content belongs to its original "
+        "Spreview is a non-commercial discovery tool. All content belongs to its original "
         "creators. Full viewing is intended to occur on YouTube with ads. This tool does "
-        "not store video files or redistribute content. Podify is not affiliated with "
+        "not store video files or redistribute content. Spreview is not affiliated with "
         "YouTube or Google."
     ),
     "registration": (
-        "By registering, you agree to use Podify only for discovery and preview purposes. "
-        "Support creators by watching full content on YouTube. Podify is limited to 1,000 "
+        "By registering, you agree to use Spreview only for discovery and preview purposes. "
+        "Support creators by watching full content on YouTube. Spreview is limited to 1,000 "
         "users and operates as a non-commercial educational prototype."
     ),
     "player": "This is a preview. Support the creator by watching the full video on YouTube.",
@@ -262,8 +262,8 @@ def get_dmca_contact_defaults() -> dict[str, Any]:
     return {
         "agent_name": get_setting("PODIFY_DMCA_AGENT_NAME", "Pending registration")
         or "Pending registration",
-        "agent_email": get_setting("PODIFY_DMCA_AGENT_EMAIL", "dmca@podify.com")
-        or "dmca@podify.com",
+        "agent_email": get_setting("PODIFY_DMCA_AGENT_EMAIL", "dmca@spreview.com")
+        or "dmca@spreview.com",
         "response_window_hours": response_window_hours,
     }
 
