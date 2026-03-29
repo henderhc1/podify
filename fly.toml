@@ -2,7 +2,7 @@ app = "spreview"
 primary_region = "iad"
 
 [build]
-builder = "ghcr.io/railwayapp/nixpacks:latest"
+dockerfile = "Dockerfile"
 
 [http_service]
 internal_port = 8080

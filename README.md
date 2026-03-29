@@ -123,8 +123,9 @@ Important: `.gitignore` prevents accidental commits. It does **not** prevent cop
 
 ## Fly.io Notes
 
-- `fly.toml` is included and uses the Nixpacks builder (`ghcr.io/railwayapp/nixpacks:latest`).
-- `nixpacks.toml` now sets an explicit start command: `uvicorn main:app --host 0.0.0.0 --port ${PORT:-8080}`.
+- `fly.toml` is included and uses `Dockerfile` for Fly builds.
+- `Dockerfile` starts with: `uvicorn main:app --host 0.0.0.0 --port ${PORT:-8080}` and installs `ffmpeg`.
+- `nixpacks.toml` remains for platforms that rely on Nixpacks (for example Railway).
 - Keep `requirements.txt` on `fastapi` + `uvicorn` (not the misspelled `fastapit[standard]` package name).
 - Set a real Fly app name in `fly.toml` before first deploy.
 - Deploy with:
