@@ -132,11 +132,12 @@ Important: `.gitignore` prevents accidental commits. It does **not** prevent cop
 - `nixpacks.toml` remains for platforms that rely on Nixpacks (for example Railway).
 - Keep `requirements.txt` on `fastapi` + `uvicorn` (not the misspelled `fastapit[standard]` package name).
 - Set a real Fly app name in `fly.toml` before first deploy.
-- For stronger no-cookie behavior on hosted Fly machines, set:
+- For faster preview resolution on Fly, start with:
   - `PODIFY_YTDLP_MAX_CONCURRENT_LOOKUPS=1`
-  - `PODIFY_YTDLP_FORCE_BOTCHECK_PROFILE=1`
-  - `PODIFY_YTDLP_SLEEP_REQUESTS_SECONDS=1.0`
-  - `PODIFY_YTDLP_BOTCHECK_RETRY_SLEEP_REQUESTS_SECONDS=2.0`
+  - `PODIFY_YTDLP_FORCE_BOTCHECK_PROFILE=0`
+  - `PODIFY_YTDLP_SLEEP_REQUESTS_SECONDS=0.25`
+  - `PODIFY_YTDLP_BOTCHECK_RETRY_SLEEP_REQUESTS_SECONDS=1.0`
+- If bot-check errors become frequent, then raise sleep values (for example `0.75` to `1.5`) and/or set `PODIFY_YTDLP_FORCE_BOTCHECK_PROFILE=1`.
 - Deploy with:
 
 ```powershell

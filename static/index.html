@@ -94,10 +94,13 @@
     .embed .banner{margin-top:.8rem}
     .copy{padding:1rem 1.2rem 1.2rem}
     .player-tools{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:.8rem;margin-top:1rem}
-    .player-tools label{display:flex;align-items:center;gap:.65rem;color:var(--muted);font-size:.92rem;font-weight:700}
-    .player-tools select{width:auto;min-width:180px;max-width:100%;background:#ffffffd9}
+    .quality-head{color:var(--muted);font-size:.92rem;font-weight:700}
+    .quality-options{display:flex;flex-wrap:wrap;gap:.5rem}
+    .quality-option{padding:.45rem .78rem;border-radius:999px;border:1px solid var(--line);background:#fffaf1e6;color:var(--muted);cursor:pointer;font-weight:700;font-size:.82rem}
+    .quality-option:hover{transform:translateY(-1px)}
+    .quality-option.active{background:var(--green);border-color:transparent;color:#fff}
     @media (max-width:960px){.hero,.grid,.split{grid-template-columns:1fr}.quad{grid-template-columns:repeat(2,minmax(0,1fr))}}
-    @media (max-width:760px){.wrap{width:min(1180px,calc(100% - 1rem))}.top .wrap{flex-direction:column;align-items:flex-start}.chip{width:100%;justify-content:center}.stats,.quad{grid-template-columns:1fr}.video{grid-template-columns:1fr}.item{flex-direction:column;align-items:flex-start}.card,.panel{padding:1rem}.player{max-height:calc(100vh - 1rem);border-radius:20px}.modal{padding:.5rem}.player-head,.embed,.copy{padding-left:1rem;padding-right:1rem}.player-tools{align-items:flex-start}.player-tools label,.player-tools select{width:100%}.copy .actions{flex-direction:column}.copy .actions .btn,.copy .actions a{width:100%;flex:1 1 auto}}
+    @media (max-width:760px){.wrap{width:min(1180px,calc(100% - 1rem))}.top .wrap{flex-direction:column;align-items:flex-start}.chip{width:100%;justify-content:center}.stats,.quad{grid-template-columns:1fr}.video{grid-template-columns:1fr}.item{flex-direction:column;align-items:flex-start}.card,.panel{padding:1rem}.player{max-height:calc(100vh - 1rem);border-radius:20px}.modal{padding:.5rem}.player-head,.embed,.copy{padding-left:1rem;padding-right:1rem}.player-tools{align-items:flex-start}.quality-head,.quality-options{width:100%}.copy .actions{flex-direction:column}.copy .actions .btn,.copy .actions a{width:100%;flex:1 1 auto}}
     @media (max-width:520px){h1{font-size:1.6rem}.mark{width:44px;height:44px;border-radius:14px}.tabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.tab{justify-content:center;padding:.75rem .85rem}.btn,.row .btn{width:100%}}
   </style>
 </head>
@@ -393,10 +396,8 @@
         <p id="modal-player-disclaimer"><strong>This is a preview.</strong> Support the creator by watching the full video on YouTube.</p>
         <p id="modal-desc" style="margin-top:.65rem;color:var(--muted);line-height:1.55">Select a video to see its description here.</p>
         <div class="player-tools" id="modal-quality-wrap" style="display:none">
-          <label for="modal-quality">
-            Quality
-            <select id="modal-quality" aria-label="Choose preview quality"></select>
-          </label>
+          <div class="quality-head">Quality</div>
+          <div class="quality-options" id="modal-quality-options" aria-label="Choose preview quality"></div>
         </div>
         <div class="actions">
           <button class="btn ghost" id="modal-fullscreen" type="button">Fullscreen</button>
@@ -623,8 +624,7 @@
       while (video.firstChild) video.removeChild(video.firstChild);
       video.load();
       currentPlaybackSources = [];
-      $('modal-quality').innerHTML = '';
-      $('modal-quality').disabled = true;
+      $('modal-quality-options').innerHTML = '';
       $('modal-quality-wrap').style.display = 'none';
     }
 
@@ -660,19 +660,24 @@
 
       video.load();
       if (resumeAt <= 0 && autoplay) video.play().catch(() => {});
-      $('modal-quality').value = String(index);
+      renderQualityPicker(currentPlaybackSources, index);
     }
 
-    function renderQualityPicker(sources) {
-      const select = $('modal-quality');
-      select.innerHTML = '';
+    function renderQualityPicker(sources, activeIndex = 0) {
+      const options = $('modal-quality-options');
+      options.innerHTML = '';
       sources.forEach((source, index) => {
-        const option = document.createElement('option');
-        option.value = String(index);
-        option.textContent = sourceLabel(source, index);
-        select.appendChild(option);
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = `quality-option${index === activeIndex ? ' active' : ''}`;
+        button.textContent = sourceLabel(source, index);
+        button.setAttribute('aria-pressed', index === activeIndex ? 'true' : 'false');
+        button.addEventListener('click', () => {
+          const video = $('modal-video');
+          setPlaybackSource(index, { resumeAt: video.currentTime || 0, autoplay: !video.paused });
+        });
+        options.appendChild(button);
       });
-      select.disabled = sources.length <= 1;
       $('modal-quality-wrap').style.display = sources.length ? 'flex' : 'none';
     }
 
@@ -834,12 +839,6 @@
     $('modal').addEventListener('click', (e) => { if (e.target === $('modal')) closeVideo(); });
     $('modal-save').addEventListener('click', async () => { if (currentVideo) await saveVideo(currentVideo); });
     $('modal-fullscreen').addEventListener('click', async () => { await requestVideoFullscreen(); });
-    $('modal-quality').addEventListener('change', (e) => {
-      const nextIndex = Number(e.target.value);
-      if (!Number.isInteger(nextIndex) || !currentPlaybackSources[nextIndex]) return;
-      const video = $('modal-video');
-      setPlaybackSource(nextIndex, { resumeAt: video.currentTime || 0, autoplay: !video.paused });
-    });
     $('modal-video').addEventListener('error', () => {
       banner('modal-video-banner', 'Preview stream failed to load. Use Watch on YouTube instead.', 'error');
     });
