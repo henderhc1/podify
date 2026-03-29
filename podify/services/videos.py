@@ -283,25 +283,74 @@ def mime_type_for_extension(ext: str | None) -> str | None:
     return None
 
 
+def parse_int_metric(value: Any) -> int:
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError):
+        return 0
+    return max(0, parsed)
+
+
+def parse_float_metric(value: Any) -> float:
+    try:
+        parsed = float(value)
+    except (TypeError, ValueError):
+        return 0.0
+    return max(0.0, parsed)
+
+
+def format_bitrate_label(kbps: float) -> str:
+    if kbps <= 0:
+        return ""
+    if kbps >= 1000:
+        return f"{kbps / 1000:.1f} Mbps"
+    return f"{int(round(kbps))} kbps"
+
+
 def describe_source_quality(fmt: dict[str, Any]) -> str:
+    height = parse_int_metric(fmt.get("height"))
+    fps = parse_int_metric(fmt.get("fps"))
+    tbr_kbps = parse_float_metric(fmt.get("tbr"))
+    abr_kbps = parse_float_metric(fmt.get("abr"))
+    ext = str(fmt.get("ext") or "").strip().upper()
+
+    parts: list[str] = []
+    if height > 0:
+        parts.append(f"{height}p")
+    if fps > 0:
+        parts.append(f"{fps}fps")
+    bitrate_label = format_bitrate_label(tbr_kbps or abr_kbps)
+    if bitrate_label:
+        parts.append(bitrate_label)
+    if ext:
+        parts.append(ext)
+    if parts:
+        return " / ".join(parts)
+
     label = str(fmt.get("format_note") or fmt.get("resolution") or "").strip()
     if label:
         return label
-
-    height = int(fmt.get("height") or 0)
-    if height > 0:
-        return f"{height}p"
-    return ""
+    return "Auto"
 
 
-def browser_playback_sort_key(fmt: dict[str, Any]) -> tuple[int, int, int, float]:
+def browser_playback_sort_key(fmt: dict[str, Any]) -> tuple[int, float, float, int, int, int]:
     ext = str(fmt.get("ext") or "").lower()
     protocol = str(fmt.get("protocol") or "").lower()
+    height = parse_int_metric(fmt.get("height"))
+    total_bitrate_kbps = parse_float_metric(fmt.get("tbr"))
+    audio_bitrate_kbps = parse_float_metric(fmt.get("abr"))
+    fps = parse_int_metric(fmt.get("fps"))
+
+    container_preference = 2 if ext == "mp4" else 1 if ext == "webm" else 0
+    protocol_preference = 1 if protocol in {"https", "http", "m3u8", "m3u8_native"} else 0
+
     return (
-        1 if ext == "mp4" else 0,
-        1 if ext == "webm" else 0,
-        int(fmt.get("height") or 0),
-        float(fmt.get("tbr") or 0.0) + (0.1 if protocol in {"https", "http"} else 0.0),
+        height,
+        total_bitrate_kbps or audio_bitrate_kbps,
+        audio_bitrate_kbps,
+        fps,
+        container_preference,
+        protocol_preference,
     )
 
 

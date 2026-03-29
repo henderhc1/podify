@@ -299,6 +299,49 @@ class SearchTests(unittest.TestCase):
         self.assertEqual(len(playback["sources"]), 2)
         self.assertTrue(playback["preview_available"])
 
+    def test_playback_prefers_higher_quality_even_if_non_mp4(self):
+        info = {
+            "formats": [
+                {
+                    "format_id": "18",
+                    "ext": "mp4",
+                    "protocol": "https",
+                    "acodec": "mp4a.40.2",
+                    "vcodec": "avc1.42001E",
+                    "height": 360,
+                    "tbr": 700,
+                    "url": "https://media.example.com/videoidx000-360.mp4",
+                },
+                {
+                    "format_id": "247+251",
+                    "ext": "webm",
+                    "protocol": "https",
+                    "acodec": "opus",
+                    "vcodec": "vp9",
+                    "height": 720,
+                    "tbr": 1600,
+                    "url": "https://media.example.com/videoidx000-720.webm",
+                },
+            ]
+        }
+
+        sources = video_services.select_browser_playback_sources(info)
+
+        self.assertEqual(sources[0]["url"], "https://media.example.com/videoidx000-720.webm")
+        self.assertIn("720p", sources[0]["quality"])
+
+    def test_playback_quality_label_includes_bitrate_and_container(self):
+        label = video_services.describe_source_quality(
+            {
+                "ext": "mp4",
+                "height": 720,
+                "fps": 30,
+                "tbr": 1800,
+            }
+        )
+
+        self.assertEqual(label, "720p / 30fps / 1.8 Mbps / MP4")
+
     @patch("main.yt_dlp.YoutubeDL", BotCheckYoutubeDL)
     def test_playback_degrades_gracefully_on_youtube_bot_check(self):
         playback = asyncio.run(main.get_playback("videoidx000"))
