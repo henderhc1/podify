@@ -154,6 +154,8 @@ class SearchTests(unittest.TestCase):
         os.environ.pop("PODIFY_YTDLP_SOURCE_ADDRESS", None)
         os.environ.pop("PODIFY_YTDLP_SLEEP_REQUESTS_SECONDS", None)
         os.environ.pop("PODIFY_YTDLP_BOTCHECK_RETRY_SLEEP_REQUESTS_SECONDS", None)
+        os.environ.pop("PODIFY_YTDLP_FORCE_BOTCHECK_PROFILE", None)
+        os.environ.pop("PODIFY_YTDLP_USER_AGENT", None)
         clear_ytdlp_runtime_cookie_file()
         if os.path.exists(self.state_path):
             os.remove(self.state_path)
@@ -255,13 +257,28 @@ class SearchTests(unittest.TestCase):
         self.assertIn("extractor_args", retry_options)
         self.assertEqual(
             retry_options["extractor_args"]["youtube"]["player_client"],
-            ["default", "web_embedded"],
+            ["default", "web_embedded", "android", "tv"],
         )
         self.assertEqual(
             retry_options["extractor_args"]["youtube"]["player_skip"],
             ["webpage", "configs"],
         )
         self.assertEqual(retry_options["sleep_interval_requests"], 1.5)
+
+    @patch("main.yt_dlp.YoutubeDL", FlatSearchYoutubeDL)
+    def test_search_can_force_botcheck_profile_without_cookies(self):
+        os.environ["PODIFY_YTDLP_FORCE_BOTCHECK_PROFILE"] = "1"
+        os.environ["PODIFY_YTDLP_BOTCHECK_RETRY_SLEEP_REQUESTS_SECONDS"] = "1.25"
+
+        results = asyncio.run(main.search("hello"))
+
+        self.assertEqual(len(results), 1)
+        self.assertIn("extractor_args", FlatSearchYoutubeDL.last_options)
+        self.assertEqual(
+            FlatSearchYoutubeDL.last_options["extractor_args"]["youtube"]["player_client"],
+            ["default", "web_embedded", "android", "tv"],
+        )
+        self.assertEqual(FlatSearchYoutubeDL.last_options["sleep_interval_requests"], 1.25)
 
     @patch("main.yt_dlp.YoutubeDL", BotCheckYoutubeDL)
     def test_search_returns_operator_guidance_on_youtube_bot_check(self):

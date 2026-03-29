@@ -4,6 +4,12 @@ primary_region = "iad"
 [build]
 dockerfile = "Dockerfile"
 
+[env]
+PODIFY_YTDLP_MAX_CONCURRENT_LOOKUPS = "1"
+PODIFY_YTDLP_FORCE_BOTCHECK_PROFILE = "1"
+PODIFY_YTDLP_SLEEP_REQUESTS_SECONDS = "1.0"
+PODIFY_YTDLP_BOTCHECK_RETRY_SLEEP_REQUESTS_SECONDS = "2.0"
+
 [http_service]
 internal_port = 8080
 force_https = true

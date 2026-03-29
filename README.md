@@ -63,6 +63,8 @@ $env:PODIFY_YTDLP_PROXY="http://user:pass@proxy-host:port"
 $env:PODIFY_YTDLP_SOURCE_ADDRESS="203.0.113.10"
 $env:PODIFY_YTDLP_SLEEP_REQUESTS_SECONDS="0.25"
 $env:PODIFY_YTDLP_BOTCHECK_RETRY_SLEEP_REQUESTS_SECONDS="1.0"
+$env:PODIFY_YTDLP_FORCE_BOTCHECK_PROFILE="0"
+$env:PODIFY_YTDLP_USER_AGENT="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36"
 $env:PODIFY_DMCA_AGENT_NAME="Your DMCA Agent"
 $env:PODIFY_DMCA_AGENT_EMAIL="dmca@example.com"
 $env:PODIFY_DMCA_RESPONSE_WINDOW_HOURS="48"
@@ -77,6 +79,8 @@ Set `PODIFY_ADMIN_TOKEN` before using the admin API locally. Admin routes stay d
 `PODIFY_YTDLP_PROXY` and `PODIFY_YTDLP_SOURCE_ADDRESS` let you force yt-dlp egress through a different outbound path.
 `PODIFY_YTDLP_SLEEP_REQUESTS_SECONDS` controls pause time between yt-dlp requests (default `0.25`).
 `PODIFY_YTDLP_BOTCHECK_RETRY_SLEEP_REQUESTS_SECONDS` controls the stricter retry profile pause after bot-check errors (default `1.0`).
+`PODIFY_YTDLP_FORCE_BOTCHECK_PROFILE=1` forces the stricter extractor profile on every request (useful for hosted environments with aggressive YouTube bot checks).
+`PODIFY_YTDLP_USER_AGENT` lets you override the default yt-dlp request user agent if you need to match a specific browser profile.
 Admins can also upload Netscape `cookies.txt` content directly from the Admin UI (`/admin/ytdlp/cookies`), which Podify stores as `data/yt-dlp-cookies.runtime.txt` and uses automatically when env cookie settings are not present.
 
 ## Access Control
@@ -128,6 +132,11 @@ Important: `.gitignore` prevents accidental commits. It does **not** prevent cop
 - `nixpacks.toml` remains for platforms that rely on Nixpacks (for example Railway).
 - Keep `requirements.txt` on `fastapi` + `uvicorn` (not the misspelled `fastapit[standard]` package name).
 - Set a real Fly app name in `fly.toml` before first deploy.
+- For stronger no-cookie behavior on hosted Fly machines, set:
+  - `PODIFY_YTDLP_MAX_CONCURRENT_LOOKUPS=1`
+  - `PODIFY_YTDLP_FORCE_BOTCHECK_PROFILE=1`
+  - `PODIFY_YTDLP_SLEEP_REQUESTS_SECONDS=1.0`
+  - `PODIFY_YTDLP_BOTCHECK_RETRY_SLEEP_REQUESTS_SECONDS=2.0`
 - Deploy with:
 
 ```powershell

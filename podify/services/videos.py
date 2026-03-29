@@ -39,14 +39,21 @@ PLAYBACK_CACHE_LOCK = Lock()
 YTDLP_LOOKUP_WORKERS = get_ytdlp_max_concurrent_lookups()
 YTDLP_LOOKUP_EXECUTOR = concurrent.futures.ThreadPoolExecutor(max_workers=YTDLP_LOOKUP_WORKERS)
 YTDLP_BOT_CHECK_MARKERS = (
-    "sign in to confirm you're not a bot",
+    "not a bot",
     "use --cookies-from-browser or --cookies",
+    "http error 429",
+    "too many requests",
+    "captcha",
 )
 DEFAULT_YTDLP_SLEEP_REQUESTS_SECONDS = 0.25
 BOTCHECK_RETRY_SLEEP_REQUESTS_SECONDS = 1.0
+DEFAULT_YTDLP_USER_AGENT = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36"
+)
 BOTCHECK_RETRY_EXTRACTOR_ARGS = {
     "youtube": {
-        "player_client": ["default", "web_embedded"],
+        "player_client": ["default", "web_embedded", "android", "tv"],
         "player_skip": ["webpage", "configs"],
     }
 }
@@ -401,7 +408,20 @@ def parse_float_setting(
     return min(maximum, max(minimum, parsed))
 
 
+def parse_bool_setting(name: str, *, default: bool = False) -> bool:
+    raw_value = (get_setting(name) or "").strip().lower()
+    if not raw_value:
+        return default
+    return raw_value in {"1", "true", "yes", "on"}
+
+
+def get_ytdlp_user_agent() -> str:
+    configured = (get_setting("PODIFY_YTDLP_USER_AGENT") or "").strip()
+    return configured or DEFAULT_YTDLP_USER_AGENT
+
+
 def build_ydl_options(*, flat_search: bool = False, bot_check_retry: bool = False) -> dict[str, Any]:
+    user_agent = get_ytdlp_user_agent()
     options: dict[str, Any] = {
         "quiet": True,
         "no_warnings": True,
@@ -409,16 +429,8 @@ def build_ydl_options(*, flat_search: bool = False, bot_check_retry: bool = Fals
         "noplaylist": True,
         "geo_bypass": True,
         "extract_flat": "in_playlist" if flat_search else False,
-        "user_agent": (
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-            "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
-        ),
-        "http_headers": {
-            "User-Agent": (
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
-            )
-        },
+        "user_agent": user_agent,
+        "http_headers": {"User-Agent": user_agent},
     }
     if flat_search:
         options["lazy_playlist"] = True
@@ -435,7 +447,11 @@ def build_ydl_options(*, flat_search: bool = False, bot_check_retry: bool = Fals
         "PODIFY_YTDLP_SLEEP_REQUESTS_SECONDS",
         default=DEFAULT_YTDLP_SLEEP_REQUESTS_SECONDS,
     )
-    if bot_check_retry:
+    apply_botcheck_profile = bot_check_retry or parse_bool_setting(
+        "PODIFY_YTDLP_FORCE_BOTCHECK_PROFILE",
+        default=False,
+    )
+    if apply_botcheck_profile:
         sleep_interval_requests = max(
             sleep_interval_requests,
             parse_float_setting(
@@ -467,21 +483,20 @@ def ytdlp_operator_guidance(context: str) -> str:
     if get_ytdlp_cookie_file():
         return (
             f"{context} YouTube is still challenging this server IP even with cookies configured. "
-            "On Railway, reduce PODIFY_YTDLP_MAX_CONCURRENT_LOOKUPS to 1 and redeploy/restart to "
-            "reduce burst traffic from shared egress IPs. If it still fails, move regions or use "
-            "a different outbound IP (PODIFY_YTDLP_PROXY or PODIFY_YTDLP_SOURCE_ADDRESS), then "
-            "refresh cookies and retry."
+            "Set PODIFY_YTDLP_MAX_CONCURRENT_LOOKUPS=1 and redeploy/restart to reduce burst traffic "
+            "from shared egress IPs. If it still fails, move regions or use a different outbound IP "
+            "(PODIFY_YTDLP_PROXY or PODIFY_YTDLP_SOURCE_ADDRESS), then refresh cookies and retry."
         )
     if get_ytdlp_cookies_from_browser():
         return (
             f"{context} YouTube is still challenging this server IP while using browser cookies. "
-            "On Railway, reduce PODIFY_YTDLP_MAX_CONCURRENT_LOOKUPS to 1 and redeploy/restart to "
-            "reduce burst traffic from shared egress IPs. If it still fails, move regions or use "
-            "a different outbound IP (PODIFY_YTDLP_PROXY or PODIFY_YTDLP_SOURCE_ADDRESS), then "
-            "refresh the browser session and retry."
+            "Set PODIFY_YTDLP_MAX_CONCURRENT_LOOKUPS=1 and redeploy/restart to reduce burst traffic "
+            "from shared egress IPs. If it still fails, move regions or use a different outbound IP "
+            "(PODIFY_YTDLP_PROXY or PODIFY_YTDLP_SOURCE_ADDRESS), then refresh the browser session "
+            "and retry."
         )
     return (
-        f"{context} YouTube is challenging this server IP. On Railway, set "
+        f"{context} YouTube is challenging this server IP. Set "
         "PODIFY_YTDLP_MAX_CONCURRENT_LOOKUPS=1 and redeploy/restart to reduce burst traffic from "
         "shared egress IPs. If it still fails, move regions or use a different outbound IP via "
         "PODIFY_YTDLP_PROXY or PODIFY_YTDLP_SOURCE_ADDRESS. "
