@@ -7,102 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@600;700&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
-  <style>
-    :root{--bg:#f6efdf;--card:#fffaf1cc;--ink:#1f2b28;--muted:#5e6966;--line:#1f2b2822;--green:#1f6f5f;--green2:#174f44;--orange:#c95c34;--shadow:0 18px 46px #1f2b281c}
-    *{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:"Space Grotesk",sans-serif;color:var(--ink);background:radial-gradient(circle at top left,#c95c3420,transparent 28%),radial-gradient(circle at top right,#1f6f5f24,transparent 28%),linear-gradient(180deg,#f7f0e5,#efe2ca);min-height:100vh;overflow-x:hidden}
-    a{text-decoration:none;color:inherit}
-    button,input,textarea,select{font:inherit}
-    .wrap{width:min(1180px,calc(100% - 2rem));margin:0 auto}
-    .top{position:sticky;top:0;z-index:20;background:#f6efdfcc;backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
-    .top .wrap{display:flex;justify-content:space-between;align-items:center;gap:1rem;padding:1rem 0}
-    .brand{display:flex;align-items:center;gap:1rem;flex-wrap:wrap;min-width:0}
-    .mark{width:50px;height:50px;border-radius:16px;display:grid;place-items:center;background:linear-gradient(135deg,var(--green),var(--orange));color:#fff;font-weight:700;box-shadow:var(--shadow)}
-    h1{font-family:"Fraunces",serif;font-size:1.9rem;line-height:1}
-    .sub{color:var(--muted);font-size:.95rem;margin-top:.2rem}
-    .chip{padding:.7rem 1rem;border-radius:999px;background:#1f6f5f18;color:var(--green2);font-weight:700;border:1px solid #1f6f5f24}
-    main.wrap{padding:1.25rem 0 3rem}
-    .hero{display:grid;grid-template-columns:1.5fr 1fr;gap:1rem}
-    .card,.panel{background:var(--card);border:1px solid #ffffff80;border-radius:26px;box-shadow:var(--shadow)}
-    .card{padding:1.6rem}
-    .hero h2{font-family:"Fraunces",serif;font-size:clamp(2rem,4vw,3.4rem);line-height:.95;max-width:10ch;margin:.9rem 0 1rem}
-    .hero p,.panel p,.muted{color:var(--muted);line-height:1.55}
-    .eyebrow{display:inline-block;padding:.45rem .8rem;border-radius:999px;background:#c95c3416;color:var(--orange);font-size:.74rem;font-weight:700;text-transform:uppercase}
-    .stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.8rem;margin-top:1.1rem}
-    .stat{padding:1rem;border-radius:18px;background:#ffffff80;border:1px solid var(--line)}
-    .stat strong{display:block;font-size:1.2rem}
-    .stack{display:grid;gap:1rem}
-    .tabs{display:flex;flex-wrap:wrap;gap:.65rem;margin:1.4rem 0 1rem}
-    .tab{padding:.8rem 1.1rem;border-radius:999px;border:1px solid var(--line);background:#fffaf1e6;color:var(--muted);cursor:pointer;font-weight:700;white-space:nowrap}
-    .tab.active,.tab:hover{background:var(--green);color:#fff}
-    .view{display:none}
-    .view.active{display:block}
-    .grid{display:grid;grid-template-columns:1.35fr 1fr;gap:1rem}
-    .panel{padding:1.3rem}
-    .head{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;margin-bottom:1rem}
-    .head > *{min-width:0}
-    .head h3{font-size:1.15rem}
-    .soft{font-size:.92rem;color:var(--muted)}
-    form.row{display:flex;gap:.75rem;flex-wrap:wrap}
-    input,textarea,select{width:100%;padding:.9rem 1rem;border-radius:16px;border:1px solid var(--line);background:#ffffffcc;color:var(--ink)}
-    textarea{min-height:115px;resize:vertical}
-    input:focus,textarea:focus,select:focus{outline:2px solid #1f6f5f24;border-color:#1f6f5f55}
-    .grow{flex:1 1 320px}
-    .btn{display:inline-flex;align-items:center;justify-content:center;gap:.4rem;padding:.9rem 1.1rem;border:none;border-radius:15px;cursor:pointer;font-weight:700;max-width:100%}
-    .btn:hover{transform:translateY(-1px)}
-    .primary{background:linear-gradient(135deg,var(--green),var(--green2));color:#fff}
-    .secondary{background:linear-gradient(135deg,var(--orange),#a94b2a);color:#fff}
-    .ghost{background:#ffffffaa;border:1px solid var(--line);color:var(--ink)}
-    .banner{display:none;margin-top:1rem;padding:.9rem 1rem;border-radius:16px;line-height:1.5}
-    .banner.show{display:block}
-    .banner.info{background:#1f6f5f12;color:var(--green2);border:1px solid #1f6f5f24}
-    .banner.error{background:#c95c3414;color:#7d3218;border:1px solid #c95c3428}
-    .empty{padding:1.8rem;border-radius:18px;border:1px dashed var(--line);background:#ffffff66;text-align:center;color:var(--muted)}
-    .videos,.list{display:grid;gap:1rem}
-    .video{display:grid;grid-template-columns:minmax(0,210px) minmax(0,1fr);gap:1rem;padding:1rem;border-radius:22px;background:#ffffff9e;border:1px solid var(--line)}
-    .thumb{width:100%;aspect-ratio:16/9;border-radius:16px;object-fit:cover;background:#e8d7bd}
-    .title{font-size:1.08rem;font-weight:700;line-height:1.3;overflow-wrap:anywhere}
-    .channel{color:var(--muted);margin-top:.25rem;overflow-wrap:anywhere}
-    .meta{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.7rem}
-    .pill,.tag{display:inline-flex;align-items:center;padding:.33rem .68rem;border-radius:999px;font-size:.8rem;font-weight:700}
-    .pill{background:#1f6f5f12;color:var(--green2)}
-    .tag{background:#c95c3416;color:#8a3a1d}
-    .desc{margin-top:.8rem;color:var(--muted);line-height:1.55;overflow-wrap:anywhere}
-    .actions,.mini{display:flex;flex-wrap:wrap;gap:.65rem;margin-top:1rem}
-    .actions .btn,.actions a,.mini .btn{flex:1 1 190px}
-    .count{padding:.45rem .8rem;border-radius:999px;background:#1f6f5f12;color:var(--green2);font-weight:700}
-    .split{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
-    .quad{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.75rem}
-    .access-quad{grid-template-columns:repeat(2,minmax(0,1fr))}
-    .mini-card{padding:1rem;border-radius:18px;background:#ffffff92;border:1px solid var(--line);min-width:0}
-    .mini-card span{display:block;overflow-wrap:anywhere}
-    .mini-card strong{display:block;font-size:1.45rem;margin-top:.25rem;overflow-wrap:anywhere}
-    .item{display:flex;justify-content:space-between;align-items:center;gap:.8rem;padding:.9rem 1rem;border-radius:18px;background:#ffffff8c;border:1px solid var(--line)}
-    .item > div{min-width:0}
-    .item strong,.item span{overflow-wrap:anywhere}
-    .item span{display:block;color:var(--muted);font-size:.9rem}
-    hr{border:none;border-top:1px solid var(--line);margin:1rem 0}
-    footer{margin-top:1rem;padding:1.2rem 1.3rem;border-radius:22px;background:#1f2b28ea;color:#fffaf1}
-    footer p{margin-top:.5rem;color:#fffaf1d0;line-height:1.6}
-    .modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;padding:1rem;background:#131a18ad;z-index:50}
-    .modal.open{display:flex}
-    .player{width:min(980px,100%);background:#fffaf1;border-radius:26px;border:1px solid #ffffff8a;box-shadow:0 22px 70px #1118;max-height:calc(100vh - 2rem);overflow:auto;overscroll-behavior:contain}
-    .player-head{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;padding:1.1rem 1.2rem 0}
-    .close{width:40px;height:40px;border:none;border-radius:50%;background:#1f2b2812;cursor:pointer;font-size:1.2rem}
-    video{width:100%;aspect-ratio:16/9;border:none;border-radius:20px;background:#111}
-    .embed{padding:1rem 1.2rem 0}
-    .embed .banner{margin-top:.8rem}
-    .copy{padding:1rem 1.2rem 1.2rem}
-    .player-tools{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:.8rem;margin-top:1rem}
-    .quality-head{color:var(--muted);font-size:.92rem;font-weight:700}
-    .quality-options{display:flex;flex-wrap:wrap;gap:.5rem}
-    .quality-option{padding:.45rem .78rem;border-radius:999px;border:1px solid var(--line);background:#fffaf1e6;color:var(--muted);cursor:pointer;font-weight:700;font-size:.82rem}
-    .quality-option:hover{transform:translateY(-1px)}
-    .quality-option.active{background:var(--green);border-color:transparent;color:#fff}
-    @media (max-width:960px){.hero,.grid,.split{grid-template-columns:1fr}.quad{grid-template-columns:repeat(2,minmax(0,1fr))}}
-    @media (max-width:760px){.wrap{width:min(1180px,calc(100% - 1rem))}.top .wrap{flex-direction:column;align-items:flex-start}.chip{width:100%;justify-content:center}.stats,.quad{grid-template-columns:1fr}.video{grid-template-columns:1fr}.item{flex-direction:column;align-items:flex-start}.card,.panel{padding:1rem}.player{max-height:calc(100vh - 1rem);border-radius:20px}.modal{padding:.5rem}.player-head,.embed,.copy{padding-left:1rem;padding-right:1rem}.player-tools{align-items:flex-start}.quality-head,.quality-options{width:100%}.copy .actions{flex-direction:column}.copy .actions .btn,.copy .actions a{width:100%;flex:1 1 auto}}
-    @media (max-width:520px){h1{font-size:1.6rem}.mark{width:44px;height:44px;border-radius:14px}.tabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.tab{justify-content:center;padding:.75rem .85rem}.btn,.row .btn{width:100%}}
-  </style>
+  <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
   <header class="top">
@@ -134,12 +39,12 @@
         <article class="card">
           <h3>User cap</h3>
           <p>Spreview stays capped at 1,000 active users with admin approval, deletion, and email blocking controls.</p>
-          <p style="margin-top:.8rem"><strong id="cap-detail">0 / 1000 active users</strong><br><span class="soft" id="cap-state">Checking registration status...</span></p>
+          <p class="status-copy"><strong id="cap-detail">0 / 1000 active users</strong><br><span class="soft" id="cap-state">Checking registration status...</span></p>
         </article>
         <article class="card">
           <h3>DMCA response</h3>
           <p>Flagged videos are blocked from search and removed from the saved preview library.</p>
-          <p style="margin-top:.8rem"><strong id="dmca-agent">Pending registration</strong><br><span class="soft" id="dmca-email">dmca@spreview.com</span></p>
+          <p class="status-copy"><strong id="dmca-agent">Pending registration</strong><br><span class="soft" id="dmca-email">dmca@spreview.com</span></p>
         </article>
       </div>
     </section>
@@ -166,7 +71,7 @@
             <button class="btn primary" type="submit">Search</button>
           </form>
           <div class="banner info" id="search-banner"></div>
-          <div class="videos" id="search-results" style="margin-top:1rem">
+          <div class="videos" id="search-results">
             <div class="empty">Search for a topic or direct URL to surface previews, save them to the library, and keep the full watch path pointed at YouTube.</div>
           </div>
         </article>
@@ -211,7 +116,7 @@
           <div class="banner info" id="access-banner"></div>
           <div class="banner info" id="verify-banner"></div>
           <div class="actions">
-            <button class="btn ghost" id="logout-button" type="button" style="display:none">Sign out</button>
+            <button class="btn ghost" id="logout-button" type="button">Sign out</button>
           </div>
         </article>
         <aside class="panel">
@@ -240,7 +145,7 @@
           <p>Copyright holders can contact <strong id="dmca-contact-email">dmca@spreview.com</strong>. Agent: <strong id="dmca-contact-name">Pending registration</strong>. Target response window: <strong id="dmca-window">48 hours</strong>.</p>
           <hr>
           <h3>Submit a takedown notice</h3>
-          <form id="dmca-form" class="list" style="margin-top:1rem">
+          <form id="dmca-form" class="list">
             <input id="dmca-name" type="text" placeholder="Your name">
             <input id="dmca-reporter-email" type="email" placeholder="you@example.com">
             <input id="dmca-video-url" type="url" placeholder="YouTube URL">
@@ -263,7 +168,7 @@
     </section>
 
     <section class="view" id="admin">
-      <div class="list" style="gap:1rem">
+      <div class="list admin-sections">
         <article class="panel">
           <div class="head">
             <div>
@@ -278,7 +183,7 @@
           <div class="banner info" id="admin-banner"></div>
         </article>
 
-        <article class="panel" id="admin-panel" style="display:none">
+        <article class="panel" id="admin-panel">
           <div class="quad" id="admin-stats">
             <div class="mini-card"><span>Active users</span><strong>0</strong></div>
             <div class="mini-card"><span>Waitlist</span><strong>0</strong></div>
@@ -313,7 +218,7 @@
             <div class="list">
               <h3>Latest test link</h3>
               <input id="admin-access-link-output" type="text" readonly placeholder="Generate a sign-in link to share with a tester.">
-              <div class="actions" style="margin-top:0">
+              <div class="actions compact">
                 <button class="btn ghost" id="admin-copy-access-link" type="button" disabled>Copy link</button>
               </div>
               <div class="banner info" id="admin-access-link-banner"></div>
@@ -339,7 +244,7 @@
               <h3>YouTube auth cookies</h3>
               <div class="soft">Paste Netscape cookies.txt content from an authenticated YouTube session to restore server-side previews.</div>
               <textarea id="admin-cookie-text" placeholder="# Netscape HTTP Cookie File"></textarea>
-              <div class="actions" style="margin-top:0">
+              <div class="actions compact">
                 <button class="btn primary" type="submit">Save cookies</button>
                 <button class="btn ghost" id="admin-cookie-clear" type="button">Clear cookies</button>
               </div>
@@ -356,16 +261,16 @@
           <div class="split">
             <div>
               <h3>Users</h3>
-              <div class="list" id="admin-users" style="margin-top:1rem"><div class="empty">Connect with a valid admin password to load users.</div></div>
+              <div class="list" id="admin-users"><div class="empty">Connect with a valid admin password to load users.</div></div>
             </div>
             <div class="list">
               <div>
                 <h3>Blocked emails</h3>
-                <div class="list" id="admin-blocked" style="margin-top:1rem"><div class="empty">No blocked emails.</div></div>
+                <div class="list" id="admin-blocked"><div class="empty">No blocked emails.</div></div>
               </div>
               <div>
                 <h3>DMCA notices</h3>
-                <div class="list" id="admin-notices" style="margin-top:1rem"><div class="empty">No notices yet.</div></div>
+                <div class="list" id="admin-notices"><div class="empty">No notices yet.</div></div>
               </div>
             </div>
           </div>
@@ -394,8 +299,8 @@
       </div>
       <div class="copy">
         <p id="modal-player-disclaimer"><strong>This is a preview.</strong> Support the creator by watching the full video on YouTube.</p>
-        <p id="modal-desc" style="margin-top:.65rem;color:var(--muted);line-height:1.55">Select a video to see its description here.</p>
-        <div class="player-tools" id="modal-quality-wrap" style="display:none">
+        <p id="modal-desc">Select a video to see its description here.</p>
+        <div class="player-tools" id="modal-quality-wrap">
           <div class="quality-head">Quality</div>
           <div class="quality-options" id="modal-quality-options" aria-label="Choose preview quality"></div>
         </div>
