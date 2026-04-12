@@ -25,6 +25,7 @@ podify/services/         Search, video, and user helper functions
 podify/state.py          JSON state loading/saving
 podify/config.py         Environment and local-settings helpers
 static/index.html        Single-page frontend
+static/app.js            Frontend application logic
 data/                    Local JSON state directory (ignored except for .gitkeep)
 downloads/               Local scratch/download area (ignored except for .gitkeep)
 ```
