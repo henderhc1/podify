@@ -27,7 +27,6 @@ podify/config.py         Environment and local-settings helpers
 static/index.html        Single-page frontend
 static/app.js            Frontend application logic
 data/                    Local JSON state directory (ignored except for .gitkeep)
-downloads/               Local scratch/download area (ignored except for .gitkeep)
 ```
 
 ## Preview Playback
@@ -109,7 +108,6 @@ Until a real outbound email provider is wired up, testers can sign up directly w
 The ignore rules keep these local-only by default:
 
 - `data/` runtime state
-- `downloads/` scratch files
 - `.env` files
 - `podify/local_settings.py`
 - temporary test artifacts such as `podify-request-*` and `podify-search-*`

@@ -12,7 +12,6 @@ APP_DESCRIPTION = "A non-commercial YouTube discovery, preview, and attribution 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 STATIC_DIR = ROOT_DIR / "static"
 DATA_DIR = ROOT_DIR / "data"
-DOWNLOADS_DIR = ROOT_DIR / "downloads"
 SEARCH_TIMEOUT_SECONDS = 20
 YTDLP_ENV_COOKIE_FILE = DATA_DIR / "yt-dlp-cookies.txt"
 YTDLP_RUNTIME_COOKIE_FILE = DATA_DIR / "yt-dlp-cookies.runtime.txt"
